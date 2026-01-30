@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { VehicleCard } from "@/components/public"
@@ -57,7 +57,7 @@ const sortOptions = [
   { value: "popular", label: "Más populares" },
 ]
 
-export default function VehiclesPage() {
+function VehiclesContent() {
   const searchParams = useSearchParams()
   const { settings } = useSettingsStore()
 
@@ -347,5 +347,21 @@ export default function VehiclesPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="loader" />
+    </div>
+  )
+}
+
+export default function VehiclesPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <VehiclesContent />
+    </Suspense>
   )
 }
