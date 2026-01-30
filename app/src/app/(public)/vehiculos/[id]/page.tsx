@@ -221,11 +221,10 @@ export default function VehicleDetailPage() {
             <div className="bg-white rounded-xl overflow-hidden shadow-sm">
               <div className="relative aspect-[16/9]">
                 {vehicle.images.length > 0 ? (
-                  <Image
+                  <img
                     src={vehicle.images[currentImageIndex]?.url}
                     alt={`${vehicle.brand} ${vehicle.model}`}
-                    fill
-                    className="object-cover"
+                    className="absolute inset-0 w-full h-full object-cover"
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-400">
@@ -286,11 +285,10 @@ export default function VehicleDetailPage() {
                           : "border-transparent"
                       }`}
                     >
-                      <Image
+                      <img
                         src={image.url}
                         alt=""
-                        fill
-                        className="object-cover"
+                        className="absolute inset-0 w-full h-full object-cover"
                       />
                     </button>
                   ))}

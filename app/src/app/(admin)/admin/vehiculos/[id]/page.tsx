@@ -227,11 +227,10 @@ export default function VehicleDetailPage({
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
             <div className="relative aspect-video bg-gray-100 dark:bg-gray-700">
               {primaryImage ? (
-                <Image
+                <img
                   src={selectedImage || primaryImage.url}
                   alt={vehicle.brand}
-                  fill
-                  className="object-cover"
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -277,11 +276,10 @@ export default function VehicleDetailPage({
                     }`}
                     onClick={() => setSelectedImage(image.url)}
                   >
-                    <Image
+                    <img
                       src={image.url}
                       alt={image.alt}
-                      fill
-                      className="object-cover"
+                      className="absolute inset-0 w-full h-full object-cover"
                     />
                     {image.isPrimary && (
                       <div className="absolute top-1 left-1 bg-amber-500 text-white text-xs px-1 rounded">

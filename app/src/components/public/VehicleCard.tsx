@@ -57,11 +57,10 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
         {/* Image */}
         <div className="relative aspect-[16/10] bg-gray-100">
           {primaryImage ? (
-            <Image
+            <img
               src={primaryImage.url}
               alt={`${vehicle.brand} ${vehicle.model}`}
-              fill
-              className="object-cover"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-gray-400">

@@ -358,11 +358,10 @@ export default function EditVehiclePage({
                   }`}
                 >
                   <div className="aspect-[4/3] relative">
-                    <Image
+                    <img
                       src={image.url}
                       alt={image.alt}
-                      fill
-                      className="object-cover"
+                      className="absolute inset-0 w-full h-full object-cover"
                     />
                   </div>
                   {image.isPrimary && (
