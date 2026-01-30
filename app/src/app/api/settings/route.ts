@@ -3,6 +3,9 @@ import prisma from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import cache, { CACHE_KEYS, CACHE_TTL } from "@/lib/cache"
 
+// Force dynamic rendering to enable all HTTP methods
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     // Check cache first
