@@ -231,20 +231,16 @@ export default function RentalDetailPage() {
           <div className="flex items-center gap-4">
             {/* Logo/Image - tamaño estándar en esquina superior izquierda */}
             {settings.contractHeaderImage ? (
-              <Image
+              <img
                 src={settings.contractHeaderImage}
                 alt="Logo de contrato"
-                width={120}
-                height={60}
-                className="object-contain max-h-[60px]"
+                className="object-contain w-[120px] max-h-[60px]"
               />
             ) : settings.logo ? (
-              <Image
+              <img
                 src={settings.logo}
                 alt={settings.companyName || "Logo"}
-                width={120}
-                height={60}
-                className="object-contain max-h-[60px]"
+                className="object-contain w-[120px] max-h-[60px]"
               />
             ) : (
               <div className="text-2xl font-bold text-red-600">

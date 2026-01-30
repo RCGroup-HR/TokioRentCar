@@ -520,12 +520,10 @@ export default function NuevaRentaPage() {
                   <div className="flex items-center gap-3">
                     <div className="w-16 h-16 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center overflow-hidden">
                       {selectedVehicle.images[0] ? (
-                        <Image
+                        <img
                           src={selectedVehicle.images[0].url}
                           alt={selectedVehicle.brand}
-                          width={64}
-                          height={64}
-                          className="object-cover"
+                          className="w-16 h-16 object-cover"
                         />
                       ) : (
                         <Car className="h-8 w-8 text-blue-600" />
@@ -583,12 +581,10 @@ export default function NuevaRentaPage() {
                         >
                           <div className="w-12 h-12 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
                             {vehicle.images[0] ? (
-                              <Image
+                              <img
                                 src={vehicle.images[0].url}
                                 alt={vehicle.brand}
-                                width={48}
-                                height={48}
-                                className="object-cover"
+                                className="w-12 h-12 object-cover"
                               />
                             ) : (
                               <Car className="h-6 w-6 text-gray-400" />
@@ -777,11 +773,10 @@ export default function NuevaRentaPage() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
               <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 mb-3">
                 {primaryImage ? (
-                  <Image
+                  <img
                     src={primaryImage.url}
                     alt={selectedVehicle.brand}
-                    fill
-                    className="object-cover"
+                    className="absolute inset-0 w-full h-full object-cover"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">

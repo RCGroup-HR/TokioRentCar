@@ -421,11 +421,10 @@ export default function NewVehiclePage() {
                   <div className="grid grid-cols-2 gap-2">
                     {uploadedImages.map((url, index) => (
                       <div key={index} className="relative aspect-video">
-                        <Image
+                        <img
                           src={url}
                           alt={`Imagen ${index + 1}`}
-                          fill
-                          className="object-cover rounded-lg"
+                          className="absolute inset-0 w-full h-full object-cover rounded-lg"
                         />
                         <button
                           type="button"

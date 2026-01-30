@@ -379,11 +379,10 @@ export default function RentasPage() {
                           <div className="flex items-center gap-3">
                             <div className="relative w-12 h-8 rounded overflow-hidden bg-gray-100 dark:bg-gray-700">
                               {primaryImage ? (
-                                <Image
+                                <img
                                   src={primaryImage.url}
                                   alt={rental.vehicle.brand}
-                                  fill
-                                  className="object-cover"
+                                  className="absolute inset-0 w-full h-full object-cover"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">

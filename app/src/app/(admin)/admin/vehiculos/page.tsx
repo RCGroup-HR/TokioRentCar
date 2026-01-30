@@ -215,11 +215,10 @@ export default function AdminVehiclesPage() {
                           <div className="flex items-center gap-3">
                             <div className="relative w-16 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
                               {primaryImage ? (
-                                <Image
+                                <img
                                   src={primaryImage.url}
                                   alt={`${vehicle.brand} ${vehicle.model}`}
-                                  fill
-                                  className="object-cover"
+                                  className="absolute inset-0 w-full h-full object-cover"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
