@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect, useState, use, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState, useRef } from "react"
+import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "@/components/ui"
 import { useLanguageStore } from "@/stores/languageStore"
 import { useCurrency } from "@/hooks/useCurrency"
@@ -45,12 +44,9 @@ interface Vehicle {
   images?: VehicleImage[]
 }
 
-export default function EditVehiclePage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = use(params)
+export default function EditVehiclePage() {
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
   const { language } = useLanguageStore()
   const { primarySymbol } = useCurrency()

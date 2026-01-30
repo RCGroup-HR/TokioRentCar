@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
+import { useEffect, useState } from "react"
+import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui"
 import { useSettingsStore } from "@/stores/settingsStore"
@@ -64,12 +63,9 @@ interface Vehicle {
   images: VehicleImage[]
 }
 
-export default function VehicleDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = use(params)
+export default function VehicleDetailPage() {
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
   const { settings } = useSettingsStore()
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)

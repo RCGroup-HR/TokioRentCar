@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useRouter, useParams } from "next/navigation"
 import { Button, SignaturePad } from "@/components/ui"
 import {
   ArrowLeft,
@@ -49,12 +49,9 @@ interface RentalData {
   } | null
 }
 
-export default function FirmarContratoPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = use(params)
+export default function FirmarContratoPage() {
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
 
   const [rental, setRental] = useState<RentalData | null>(null)

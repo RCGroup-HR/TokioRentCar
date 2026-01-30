@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useRouter, useParams } from "next/navigation"
 import { Button } from "@/components/ui"
 import {
   ArrowLeft,
@@ -69,12 +69,9 @@ const rentalStatusLabels: Record<string, { label: string; color: string }> = {
   OVERDUE: { label: "Vencida", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400" },
 }
 
-export default function CustomerRentalDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = use(params)
+export default function CustomerRentalDetailPage() {
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [rentals, setRentals] = useState<Rental[]>([])
