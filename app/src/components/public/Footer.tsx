@@ -28,11 +28,9 @@ export function Footer() {
           {/* Company Info */}
           <div>
             {settings.logo ? (
-              <Image
+              <img
                 src={settings.logo}
                 alt={settings.companyName}
-                width={150}
-                height={50}
                 className="h-12 w-auto object-contain mb-4 brightness-0 invert"
               />
             ) : (

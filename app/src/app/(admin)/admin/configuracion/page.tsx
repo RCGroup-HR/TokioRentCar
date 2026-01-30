@@ -266,11 +266,10 @@ export default function ConfigurationPage() {
                 <div className="flex items-center gap-4">
                   {formData.logo ? (
                     <div className="relative w-32 h-16 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
-                      <Image
+                      <img
                         src={formData.logo}
                         alt="Logo"
-                        fill
-                        className="object-contain"
+                        className="absolute inset-0 w-full h-full object-contain"
                       />
                       <button
                         type="button"
@@ -333,11 +332,10 @@ export default function ConfigurationPage() {
                 <div className="flex flex-col gap-3">
                   {formData.contractHeaderImage ? (
                     <div className="relative w-full h-24 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
-                      <Image
+                      <img
                         src={formData.contractHeaderImage}
                         alt="Contract Header"
-                        fill
-                        className="object-contain"
+                        className="absolute inset-0 w-full h-full object-contain"
                       />
                       <button
                         type="button"
@@ -388,20 +386,16 @@ export default function ConfigurationPage() {
                       <div className="flex items-center gap-3">
                         {/* Logo en esquina superior izquierda */}
                         {formData.contractHeaderImage ? (
-                          <Image
+                          <img
                             src={formData.contractHeaderImage}
                             alt="Logo contrato"
-                            width={80}
-                            height={40}
-                            className="object-contain max-h-[40px]"
+                            className="object-contain w-20 max-h-[40px]"
                           />
                         ) : formData.logo ? (
-                          <Image
+                          <img
                             src={formData.logo}
                             alt="Logo"
-                            width={80}
-                            height={40}
-                            className="object-contain max-h-[40px]"
+                            className="object-contain w-20 max-h-[40px]"
                           />
                         ) : (
                           <div className="text-sm font-bold text-red-600">
