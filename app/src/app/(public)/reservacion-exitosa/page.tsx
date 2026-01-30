@@ -1,12 +1,13 @@
 "use client"
 
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { Button, Card, CardContent } from "@/components/ui"
-import { CheckCircle, Car, Phone, Mail } from "lucide-react"
+import { CheckCircle, Car, Phone } from "lucide-react"
 
-export default function ReservationSuccessPage() {
+function ReservationSuccessContent() {
   const searchParams = useSearchParams()
   const { settings } = useSettingsStore()
 
@@ -108,5 +109,21 @@ export default function ReservationSuccessPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="loader" />
+    </div>
+  )
+}
+
+export default function ReservationSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ReservationSuccessContent />
+    </Suspense>
   )
 }
