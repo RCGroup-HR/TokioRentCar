@@ -1,0 +1,791 @@
+// Prisma Schema para Sistema de Renta de Vehículos Multi-tenant
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== CONFIGURACIÓN DE EMPRESA ====================
+model CompanySettings {
+  id                String   @id @default(uuid())
+  companyName       String   @default("Rent Car")
+  slogan            String?
+  logo              String?
+  favicon           String?
+  contractHeaderImage String?  // Imagen de encabezado para contratos de renta
+
+  // Colores personalizables
+  primaryColor      String   @default("#F59E0B") // Amarillo
+  secondaryColor    String   @default("#1F2937") // Gris oscuro
+  accentColor       String   @default("#000000") // Negro
+
+  // Información de contacto
+  phone             String?
+  whatsapp          String?
+  email             String?
+  address           String?
+  city              String?
+  country           String?
+  googleMapsUrl     String?
+  latitude          Float?
+  longitude         Float?
+
+  // Redes sociales
+  facebook          String?
+  instagram         String?
+  twitter           String?
+  youtube           String?
+  tiktok            String?
+
+  // Configuración de negocio - Moneda principal
+  currency          String   @default("USD")
+  currencySymbol    String   @default("$")
+  // Moneda secundaria para precios duales
+  secondaryCurrency       String   @default("DOP")
+  secondaryCurrencySymbol String   @default("RD$")
+  exchangeRate            Float    @default(60)
+  showDualCurrency        Boolean  @default(true)
+
+  // Configuración de impuestos (ITBIS)
+  applyTax          Boolean  @default(true)
+  taxRate           Float    @default(18)  // Porcentaje de ITBIS (18% en RD)
+
+  timezone          String   @default("America/Santo_Domingo")
+  defaultLanguage   String   @default("es")
+
+  // Políticas
+  termsAndConditions String? @db.Text
+  privacyPolicy      String? @db.Text
+  cancellationPolicy String? @db.Text
+
+  // Horario de atención
+  businessHours     Json?
+
+  // SEO
+  metaTitle         String?
+  metaDescription   String?  @db.Text
+  metaKeywords      String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ==================== USUARIOS Y AUTENTICACIÓN ====================
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  phone         String?
+  avatar        String?
+  role          UserRole  @default(CUSTOMER)
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+
+  // Comisiones (para rentadores)
+  commissionRate Float?   @default(0)
+
+  // Firma digital del usuario (para agentes/admins)
+  signature     String?   @db.LongText  // Base64 de la firma
+
+  // Relaciones
+  reservations  Reservation[]
+  rentals       Rental[]      @relation("RenterRentals")
+  managedRentals Rental[]     @relation("AgentRentals")
+  expenses      Expense[]
+  commissions   Commission[]
+  sessions      Session[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  AGENT
+  CUSTOMER
+}
+
+// ==================== VEHÍCULOS ====================
+model Vehicle {
+  id              String        @id @default(uuid())
+
+  // Información básica
+  brand           String
+  model           String
+  year            Int
+  licensePlate    String        @unique
+  vin             String?       @unique
+  color           String
+
+  // Categoría y tipo
+  category        VehicleCategory
+  transmission    TransmissionType
+  fuelType        FuelType
+
+  // Especificaciones
+  seats           Int           @default(5)
+  doors           Int           @default(4)
+  airConditioning Boolean       @default(true)
+
+  // Precios
+  dailyRate       Float
+  weeklyRate      Float?
+  monthlyRate     Float?
+  depositAmount   Float         @default(0)
+  commissionAmount Float?       // Monto de comisión por día para el agente
+
+  // Estado
+  status          VehicleStatus @default(AVAILABLE)
+  mileage         Int           @default(0)
+
+  // Descripción
+  description     String?       @db.Text
+  features        Json?         // Lista de características adicionales
+
+  // Imágenes
+  images          VehicleImage[]
+
+  // Relaciones
+  reservations    Reservation[]
+  rentals         Rental[]
+  expenses        Expense[]
+  maintenances    Maintenance[]
+
+  // Ubicación actual
+  currentLocation String?
+
+  // Seguros y documentos
+  insuranceExpiry DateTime?
+  registrationExpiry DateTime?
+
+  isActive        Boolean       @default(true)
+  isFeatured      Boolean       @default(false)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([brand])
+  @@index([isActive])
+  @@index([status, category])
+  @@index([isActive, isFeatured])
+  @@index([isActive, status])
+}
+
+model VehicleImage {
+  id        String   @id @default(uuid())
+  vehicleId String
+  url       String
+  alt       String?
+  isPrimary Boolean  @default(false)
+  order     Int      @default(0)
+
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([vehicleId])
+}
+
+enum VehicleCategory {
+  ECONOMY
+  COMPACT
+  MIDSIZE
+  FULLSIZE
+  SUV
+  LUXURY
+  VAN
+  PICKUP
+  CONVERTIBLE
+  SPORTS
+}
+
+enum TransmissionType {
+  AUTOMATIC
+  MANUAL
+}
+
+enum FuelType {
+  GASOLINE
+  DIESEL
+  ELECTRIC
+  HYBRID
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  RENTED
+  MAINTENANCE
+  RESERVED
+  OUT_OF_SERVICE
+}
+
+// ==================== RESERVACIONES ====================
+model Reservation {
+  id              String            @id @default(uuid())
+  reservationCode String            @unique
+
+  // Cliente
+  customerId      String
+  customer        User              @relation(fields: [customerId], references: [id])
+
+  // Vehículo
+  vehicleId       String
+  vehicle         Vehicle           @relation(fields: [vehicleId], references: [id])
+
+  // Fechas
+  startDate       DateTime
+  endDate         DateTime
+
+  // Ubicaciones
+  pickupLocation  String
+  dropoffLocation String
+
+  // Precios
+  dailyRate       Float
+  totalDays       Int
+  subtotal        Float
+  taxes           Float             @default(0)
+  discount        Float             @default(0)
+  totalAmount     Float
+  depositAmount   Float             @default(0)
+
+  // Estado
+  status          ReservationStatus @default(PENDING)
+
+  // Notas
+  customerNotes   String?           @db.Text
+  internalNotes   String?           @db.Text
+
+  // Información adicional del cliente
+  customerPhone   String?
+  customerEmail   String?
+  customerIdNumber String?
+  customerIdType  String?
+
+  // Conversión a renta
+  rental          Rental?
+
+  // Relación con Customer (nuevo modelo)
+  reservationCustomers ReservationCustomer[]
+
+  // Pago
+  paymentStatus   PaymentStatus     @default(PENDING)
+  paymentMethod   String?
+  paymentReference String?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@index([reservationCode])
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+// ==================== RENTAS (Contratos activos) ====================
+model Rental {
+  id              String       @id @default(uuid())
+  contractNumber  String       @unique
+
+  // Reservación origen (opcional)
+  reservationId   String?      @unique
+  reservation     Reservation? @relation(fields: [reservationId], references: [id])
+
+  // Cliente
+  customerId      String
+  customer        User         @relation("RenterRentals", fields: [customerId], references: [id])
+
+  // Vehículo
+  vehicleId       String
+  vehicle         Vehicle      @relation(fields: [vehicleId], references: [id])
+
+  // Agente que procesó
+  agentId         String?
+  agent           User?        @relation("AgentRentals", fields: [agentId], references: [id])
+
+  // Fechas
+  startDate       DateTime
+  expectedEndDate DateTime
+  actualEndDate   DateTime?
+
+  // Kilometraje
+  startMileage    Int
+  endMileage      Int?
+
+  // Ubicaciones
+  pickupLocation  String
+  dropoffLocation String?
+
+  // Precios
+  dailyRate       Float
+  totalDays       Int
+  subtotal        Float
+  taxes           Float        @default(0)
+  discount        Float        @default(0)
+  extraCharges    Float        @default(0)
+  totalAmount     Float
+  depositAmount   Float        @default(0)
+  depositReturned Float        @default(0)
+
+  // Estado
+  status          RentalStatus @default(ACTIVE)
+
+  // Condición del vehículo
+  pickupCondition Json?        // Fotos y notas del estado inicial
+  returnCondition Json?        // Fotos y notas del estado final
+
+  // Fuel
+  fuelLevelStart  Int?         // Porcentaje
+  fuelLevelEnd    Int?
+
+  // Documentos del cliente
+  licenseNumber   String?
+  licenseExpiry   DateTime?
+  idNumber        String?
+  idType          String?
+
+  // Conductor adicional
+  additionalDriver Json?
+
+  // Notas
+  notes           String?      @db.Text
+
+  // Firmas digitales
+  customerSignature String?    @db.LongText  // Base64 de la firma del cliente
+  agentSignature    String?    @db.LongText  // Base64 de la firma del agente
+  signedAt          DateTime?                // Fecha/hora de firma del contrato
+
+  // Pagos
+  payments        Payment[]
+
+  // Comisiones generadas
+  commissions     Commission[]
+
+  // Daños reportados
+  damages         Damage[]
+
+  // Relación con Customer (nuevo modelo)
+  rentalCustomers RentalCustomer[]
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([agentId])
+  @@index([status])
+  @@index([startDate, expectedEndDate])
+  @@index([status, createdAt])
+  @@index([customerId, status])
+  @@index([agentId, status])
+  @@index([vehicleId, status])
+  @@index([status, actualEndDate])
+}
+
+enum RentalStatus {
+  ACTIVE
+  COMPLETED
+  EXTENDED
+  CANCELLED
+  OVERDUE
+}
+
+// ==================== PAGOS ====================
+model Payment {
+  id            String        @id @default(uuid())
+  rentalId      String
+  rental        Rental        @relation(fields: [rentalId], references: [id])
+
+  amount        Float
+  method        PaymentMethod
+  reference     String?
+  notes         String?
+
+  receivedBy    String?
+
+  createdAt     DateTime      @default(now())
+
+  @@index([rentalId])
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  TRANSFER
+  CHECK
+  OTHER
+}
+
+// ==================== DAÑOS ====================
+model Damage {
+  id          String   @id @default(uuid())
+  rentalId    String
+  rental      Rental   @relation(fields: [rentalId], references: [id])
+
+  description String   @db.Text
+  location    String   // Parte del vehículo
+  severity    String   // MINOR, MODERATE, SEVERE
+  repairCost  Float?
+  images      Json?
+
+  isResolved  Boolean  @default(false)
+  resolution  String?  @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([rentalId])
+}
+
+// ==================== GASTOS ====================
+model Expense {
+  id          String       @id @default(uuid())
+
+  vehicleId   String?
+  vehicle     Vehicle?     @relation(fields: [vehicleId], references: [id])
+
+  category    ExpenseCategory
+  description String
+  amount      Float
+  date        DateTime     @default(now())
+
+  // Documentación
+  receipt     String?
+  invoiceNumber String?
+  vendor      String?
+
+  // Kilometraje al momento del gasto
+  mileageAtExpense Int?
+
+  // Quien registró
+  registeredById String
+  registeredBy   User      @relation(fields: [registeredById], references: [id])
+
+  notes       String?      @db.Text
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([vehicleId])
+  @@index([category])
+  @@index([date])
+  @@index([vehicleId, date])
+  @@index([vehicleId, category])
+}
+
+enum ExpenseCategory {
+  FUEL
+  MAINTENANCE
+  REPAIR
+  INSURANCE
+  REGISTRATION
+  TAXES
+  CLEANING
+  PARKING
+  TOLL
+  FINE
+  ACCESSORIES
+  OTHER
+}
+
+// ==================== MANTENIMIENTO ====================
+model Maintenance {
+  id              String            @id @default(uuid())
+  vehicleId       String
+  vehicle         Vehicle           @relation(fields: [vehicleId], references: [id])
+
+  type            MaintenanceType
+  description     String            @db.Text
+
+  scheduledDate   DateTime
+  completedDate   DateTime?
+
+  mileageAtService Int?
+  nextServiceMileage Int?
+  nextServiceDate DateTime?
+
+  cost            Float?
+  vendor          String?
+  invoiceNumber   String?
+
+  status          MaintenanceStatus @default(SCHEDULED)
+  notes           String?           @db.Text
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([vehicleId])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+enum MaintenanceType {
+  OIL_CHANGE
+  TIRE_ROTATION
+  BRAKE_SERVICE
+  TRANSMISSION
+  ENGINE
+  ELECTRICAL
+  AC_SERVICE
+  INSPECTION
+  WASH
+  OTHER
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// ==================== COMISIONES ====================
+model Commission {
+  id          String           @id @default(uuid())
+
+  agentId     String
+  agent       User             @relation(fields: [agentId], references: [id])
+
+  rentalId    String
+  rental      Rental           @relation(fields: [rentalId], references: [id])
+
+  rate        Float            // Porcentaje de comisión
+  baseAmount  Float            // Monto base sobre el que se calcula
+  amount      Float            // Monto de la comisión
+
+  status      CommissionStatus @default(PENDING)
+  paidAt      DateTime?
+  paymentRef  String?
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([agentId])
+  @@index([rentalId])
+  @@index([status])
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+// ==================== CLIENTES ====================
+model Customer {
+  id              String    @id @default(uuid())
+
+  // Información personal
+  firstName       String
+  lastName        String
+  email           String    @unique
+  phone           String
+  phoneSecondary  String?
+
+  // Documentos de identidad
+  idType          String    @default("CEDULA") // CEDULA, PASSPORT, LICENSE
+  idNumber        String    @unique
+  idExpiry        DateTime?
+  idImage         String?   // URL de imagen del documento
+
+  // Licencia de conducir
+  licenseNumber   String?
+  licenseExpiry   DateTime?
+  licenseImage    String?   // URL de imagen de la licencia
+  licenseCategory String?   // A, B, C, etc.
+
+  // Dirección
+  address         String?
+  city            String?
+  state           String?
+  country         String?   @default("República Dominicana")
+  zipCode         String?
+
+  // Información adicional
+  dateOfBirth     DateTime?
+  nationality     String?
+  occupation      String?
+  employer        String?
+  employerPhone   String?
+
+  // Referencias de emergencia
+  emergencyContact     String?
+  emergencyPhone       String?
+  emergencyRelationship String?
+
+  // Notas y comentarios
+  notes           String?   @db.Text
+
+  // Historial y estado
+  isActive        Boolean   @default(true)
+  isBlacklisted   Boolean   @default(false)
+  blacklistReason String?
+
+  // Relaciones
+  rentals         RentalCustomer[]
+  reservations    ReservationCustomer[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([email])
+  @@index([idNumber])
+  @@index([phone])
+  @@index([isActive])
+}
+
+// Relación entre Rental y Customer (reemplaza la relación directa con User)
+model RentalCustomer {
+  id          String   @id @default(uuid())
+  rentalId    String
+  rental      Rental   @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+
+  createdAt   DateTime @default(now())
+
+  @@unique([rentalId, customerId])
+  @@index([customerId])
+}
+
+// Relación entre Reservation y Customer (reemplaza la relación directa con User)
+model ReservationCustomer {
+  id            String      @id @default(uuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  customerId    String
+  customer      Customer    @relation(fields: [customerId], references: [id])
+
+  createdAt     DateTime    @default(now())
+
+  @@unique([reservationId, customerId])
+  @@index([customerId])
+}
+
+// ==================== PUNTOS DE ENCUENTRO ====================
+model PickupLocation {
+  id          String   @id @default(uuid())
+  name        String
+  address     String
+  city        String?
+
+  latitude    Float?
+  longitude   Float?
+  googleMapsUrl String?
+
+  instructions String? @db.Text
+
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+
+  // Horarios especiales
+  businessHours Json?
+
+  // Costo extra por pickup en esta ubicación
+  extraCharge Float    @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+// ==================== TESTIMONIOS ====================
+model Testimonial {
+  id          String   @id @default(uuid())
+  customerName String
+  customerImage String?
+  rating      Int      @default(5)
+  comment     String   @db.Text
+
+  isApproved  Boolean  @default(false)
+  isFeatured  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+
+  @@index([isApproved])
+  @@index([isFeatured])
+}
+
+// ==================== BANNERS Y PROMOCIONES ====================
+model Banner {
+  id          String   @id @default(uuid())
+  title       String
+  subtitle    String?
+  imageUrl    String
+  linkUrl     String?
+
+  position    String   @default("home") // home, catalog, etc
+  order       Int      @default(0)
+
+  startDate   DateTime?
+  endDate     DateTime?
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([position])
+}
+
+// ==================== AUDITORÍA ====================
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String
+  entity      String
+  entityId    String?
+  oldValues   Json?
+  newValues   Json?
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+}
