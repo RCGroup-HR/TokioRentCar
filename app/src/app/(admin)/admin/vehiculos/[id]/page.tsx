@@ -254,21 +254,14 @@ export default function VehicleDetailPage({
                   className="hidden"
                   disabled={uploading}
                 />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={
-                    uploading ? (
-                      <div className="loader-sm" />
-                    ) : (
-                      <Upload className="h-4 w-4" />
-                    )
-                  }
-                  disabled={uploading}
-                  as="span"
-                >
+                <span className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 bg-white hover:bg-gray-50 cursor-pointer ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  {uploading ? (
+                    <div className="loader-sm" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
                   {uploading ? "Subiendo..." : "Subir Fotos"}
-                </Button>
+                </span>
               </label>
             </div>
 
