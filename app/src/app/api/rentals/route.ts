@@ -157,6 +157,20 @@ export async function POST(request: Request) {
 
     const data = await request.json()
 
+    // Helper para convertir strings vacíos a null
+    const emptyToNull = (val: string | null | undefined) =>
+      val === "" || val === undefined ? null : val
+
+    // Limpiar campos opcionales
+    data.licenseNumber = emptyToNull(data.licenseNumber)
+    data.licenseExpiry = emptyToNull(data.licenseExpiry)
+    data.idNumber = emptyToNull(data.idNumber)
+    data.idType = emptyToNull(data.idType)
+    data.notes = emptyToNull(data.notes)
+    data.reservationId = emptyToNull(data.reservationId)
+    data.dropoffLocation = emptyToNull(data.dropoffLocation)
+    data.additionalDriver = emptyToNull(data.additionalDriver)
+
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: data.vehicleId },
     })

@@ -35,10 +35,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
+      const searchLower = search.toLowerCase()
       where.OR = [
-        { brand: { contains: search } },
-        { model: { contains: search } },
-        { licensePlate: { contains: search } },
+        { brand: { contains: searchLower, mode: "insensitive" } },
+        { model: { contains: searchLower, mode: "insensitive" } },
+        { licensePlate: { contains: searchLower, mode: "insensitive" } },
+        { color: { contains: searchLower, mode: "insensitive" } },
       ]
     }
 

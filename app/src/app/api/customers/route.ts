@@ -23,9 +23,9 @@ export const GET = withStaffAuth(async (request, session) => {
       // Sanitizar búsqueda
       const sanitizedSearch = search.trim().slice(0, 100)
       where.OR = [
-        { firstName: { contains: sanitizedSearch } },
-        { lastName: { contains: sanitizedSearch } },
-        { email: { contains: sanitizedSearch } },
+        { firstName: { contains: sanitizedSearch, mode: "insensitive" } },
+        { lastName: { contains: sanitizedSearch, mode: "insensitive" } },
+        { email: { contains: sanitizedSearch, mode: "insensitive" } },
         { phone: { contains: sanitizedSearch } },
         { idNumber: { contains: sanitizedSearch } },
         { licenseNumber: { contains: sanitizedSearch } },
