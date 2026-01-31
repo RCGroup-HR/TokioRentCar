@@ -125,8 +125,29 @@ export async function PUT(request: Request) {
 
     const data = await request.json()
 
-    // Bulk update commissions (mark as paid)
-    if (data.ids && Array.isArray(data.ids)) {
+    if (!data.ids || !Array.isArray(data.ids)) {
+      return NextResponse.json(
+        { error: "IDs de comisiones requeridos" },
+        { status: 400 }
+      )
+    }
+
+    // Aprobar comisiones pendientes
+    if (data.action === "approve") {
+      await prisma.commission.updateMany({
+        where: {
+          id: { in: data.ids },
+          status: "PENDING",
+        },
+        data: {
+          status: "APPROVED",
+        },
+      })
+      return NextResponse.json({ message: "Comisiones aprobadas" })
+    }
+
+    // Pagar comisiones aprobadas
+    if (data.action === "pay") {
       await prisma.commission.updateMany({
         where: {
           id: { in: data.ids },
@@ -138,14 +159,37 @@ export async function PUT(request: Request) {
           paymentRef: data.paymentRef,
         },
       })
-
-      return NextResponse.json({ message: "Comisiones actualizadas" })
+      return NextResponse.json({ message: "Comisiones pagadas" })
     }
 
-    return NextResponse.json(
-      { error: "IDs de comisiones requeridos" },
-      { status: 400 }
-    )
+    // Cancelar comisiones
+    if (data.action === "cancel") {
+      await prisma.commission.updateMany({
+        where: {
+          id: { in: data.ids },
+          status: { in: ["PENDING", "APPROVED"] },
+        },
+        data: {
+          status: "CANCELLED",
+        },
+      })
+      return NextResponse.json({ message: "Comisiones canceladas" })
+    }
+
+    // Por defecto, marcar como pagadas (compatibilidad con código anterior)
+    await prisma.commission.updateMany({
+      where: {
+        id: { in: data.ids },
+        status: "APPROVED",
+      },
+      data: {
+        status: "PAID",
+        paidAt: new Date(),
+        paymentRef: data.paymentRef,
+      },
+    })
+
+    return NextResponse.json({ message: "Comisiones actualizadas" })
   } catch (error) {
     console.error("Error updating commissions:", error)
     return NextResponse.json(

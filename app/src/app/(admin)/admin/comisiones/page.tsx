@@ -96,6 +96,28 @@ export default function ComisionesPage() {
     fetchCommissions()
   }, [statusFilter, agentFilter, dateFrom, dateTo])
 
+  const handleApproveSelected = async () => {
+    if (selectedIds.length === 0) return
+
+    try {
+      const res = await fetch("/api/commissions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: selectedIds,
+          action: "approve",
+        }),
+      })
+
+      if (res.ok) {
+        setSelectedIds([])
+        fetchCommissions()
+      }
+    } catch (error) {
+      console.error("Error approving commissions:", error)
+    }
+  }
+
   const handlePaySelected = async () => {
     if (selectedIds.length === 0) return
 
@@ -105,6 +127,7 @@ export default function ComisionesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ids: selectedIds,
+          action: "pay",
           paymentRef: paymentRef,
         }),
       })
@@ -126,12 +149,24 @@ export default function ComisionesPage() {
     )
   }
 
+  const selectAllPending = () => {
+    const pendingIds = commissions
+      .filter((c) => c.status === "PENDING")
+      .map((c) => c.id)
+    setSelectedIds(pendingIds)
+  }
+
   const selectAllApproved = () => {
     const approvedIds = commissions
       .filter((c) => c.status === "APPROVED")
       .map((c) => c.id)
     setSelectedIds(approvedIds)
   }
+
+  // Determine what action buttons to show based on selected commissions
+  const selectedCommissions = commissions.filter((c) => selectedIds.includes(c.id))
+  const allSelectedArePending = selectedCommissions.length > 0 && selectedCommissions.every((c) => c.status === "PENDING")
+  const allSelectedAreApproved = selectedCommissions.length > 0 && selectedCommissions.every((c) => c.status === "APPROVED")
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("es-DO", {
@@ -158,11 +193,23 @@ export default function ComisionesPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Comisiones</h1>
           <p className="text-gray-600 dark:text-gray-400">Gestión de comisiones de agentes</p>
         </div>
-        {selectedIds.length > 0 && (
-          <Button onClick={() => setShowPayModal(true)}>
-            Pagar Seleccionadas ({selectedIds.length})
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {selectedIds.length > 0 && allSelectedArePending && (
+            <Button onClick={handleApproveSelected} className="bg-blue-600 hover:bg-blue-700">
+              Aprobar ({selectedIds.length})
+            </Button>
+          )}
+          {selectedIds.length > 0 && allSelectedAreApproved && (
+            <Button onClick={() => setShowPayModal(true)} className="bg-green-600 hover:bg-green-700">
+              Pagar ({selectedIds.length})
+            </Button>
+          )}
+          {selectedIds.length > 0 && !allSelectedArePending && !allSelectedAreApproved && (
+            <p className="text-sm text-amber-600 dark:text-amber-400 py-2">
+              Seleccione solo pendientes o solo aprobadas
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
@@ -247,6 +294,9 @@ export default function ComisionesPage() {
             ))}
           </select>
           <div className="flex-1" />
+          <Button variant="outline" size="sm" onClick={selectAllPending}>
+            Seleccionar Pendientes
+          </Button>
           <Button variant="outline" size="sm" onClick={selectAllApproved}>
             Seleccionar Aprobadas
           </Button>
@@ -311,11 +361,14 @@ export default function ComisionesPage() {
                       checked={
                         selectedIds.length > 0 &&
                         selectedIds.length ===
-                          commissions.filter((c) => c.status === "APPROVED").length
+                          commissions.filter((c) => c.status === "PENDING" || c.status === "APPROVED").length
                       }
                       onChange={(e) => {
                         if (e.target.checked) {
-                          selectAllApproved()
+                          const selectableIds = commissions
+                            .filter((c) => c.status === "PENDING" || c.status === "APPROVED")
+                            .map((c) => c.id)
+                          setSelectedIds(selectableIds)
                         } else {
                           setSelectedIds([])
                         }
@@ -350,7 +403,7 @@ export default function ComisionesPage() {
                 {commissions.map((commission) => (
                   <tr key={commission.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-4 py-3">
-                      {commission.status === "APPROVED" && (
+                      {(commission.status === "PENDING" || commission.status === "APPROVED") && (
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(commission.id)}
