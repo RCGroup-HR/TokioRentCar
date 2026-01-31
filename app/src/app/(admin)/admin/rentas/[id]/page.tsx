@@ -7,7 +7,9 @@ import Image from "next/image"
 import { Button } from "@/components/ui"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { formatCurrency } from "@/lib/utils"
-import { ArrowLeft, Printer, Download, Car, Calendar, User, FileText, PenTool, CheckCircle, Share2 } from "lucide-react"
+import { ArrowLeft, Printer, Download, Car, Calendar, User, FileText, PenTool, CheckCircle, Share2, Loader2 } from "lucide-react"
+import html2canvas from "html2canvas"
+import jsPDF from "jspdf"
 
 interface Customer {
   id: string
@@ -101,6 +103,7 @@ export default function RentalDetailPage() {
   const { settings } = useSettingsStore()
   const [rental, setRental] = useState<Rental | null>(null)
   const [loading, setLoading] = useState(true)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
   const contractRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -138,20 +141,82 @@ export default function RentalDetailPage() {
     window.print()
   }
 
-  const handleShareWhatsApp = () => {
+  const generatePDF = async (): Promise<Blob | null> => {
+    if (!contractRef.current) return null
+
+    try {
+      const canvas = await html2canvas(contractRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      })
+
+      const imgWidth = 210 // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
+
+      return pdf.output('blob')
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      return null
+    }
+  }
+
+  const handleShareWhatsApp = async () => {
     if (!rental || !customer) return
 
-    const vehicleName = `${rental.vehicle.brand} ${rental.vehicle.model} ${rental.vehicle.year}`
-    const startDate = formatDate(rental.startDate)
-    const endDate = formatDate(rental.expectedEndDate)
-    const total = formatCurrency(rental.totalAmount, settings.currency, settings.currencySymbol)
+    setGeneratingPdf(true)
 
-    const message = `🚗 *Contrato de Alquiler*
+    try {
+      const pdfBlob = await generatePDF()
+
+      if (!pdfBlob) {
+        alert('Error al generar el PDF')
+        setGeneratingPdf(false)
+        return
+      }
+
+      const fileName = `Contrato-${rental.contractNumber}.pdf`
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' })
+
+      // Check if Web Share API is available and supports files
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          files: [pdfFile],
+          title: `Contrato ${rental.contractNumber}`,
+          text: `Contrato de alquiler - ${settings.companyName || 'Rent Car'}`,
+        })
+      } else {
+        // Fallback: Download PDF and open WhatsApp with message
+        const url = URL.createObjectURL(pdfBlob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        // Open WhatsApp with message
+        const vehicleName = `${rental.vehicle.brand} ${rental.vehicle.model} ${rental.vehicle.year}`
+        const startDate = formatDate(rental.startDate)
+        const endDate = formatDate(rental.expectedEndDate)
+        const total = formatCurrency(rental.totalAmount, settings.currency, settings.currencySymbol)
+
+        const message = `🚗 *Contrato de Alquiler*
 ━━━━━━━━━━━━━━━
 📋 *No. ${rental.contractNumber}*
 
 👤 *Cliente:* ${customer.firstName} ${customer.lastName}
-📱 *Teléfono:* ${customer.phone}
 
 🚙 *Vehículo:* ${vehicleName}
 🔢 *Placa:* ${rental.vehicle.licensePlate}
@@ -159,18 +224,26 @@ export default function RentalDetailPage() {
 📅 *Período:*
    Desde: ${startDate}
    Hasta: ${endDate}
-   Total: ${rental.totalDays} día${rental.totalDays > 1 ? 's' : ''}
 
 💰 *Total:* ${total}
 
-✅ Contrato firmado digitalmente
+📎 *El PDF del contrato se ha descargado. Por favor adjúntelo a este chat.*
 ━━━━━━━━━━━━━━━
 ${settings.companyName || 'Rent Car'}`
 
-    const encodedMessage = encodeURIComponent(message)
-    const whatsappUrl = `https://wa.me/${customer.phone.replace(/\D/g, '')}?text=${encodedMessage}`
+        const encodedMessage = encodeURIComponent(message)
+        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\D/g, '')}?text=${encodedMessage}`
 
-    window.open(whatsappUrl, '_blank')
+        setTimeout(() => {
+          window.open(whatsappUrl, '_blank')
+        }, 500)
+      }
+    } catch (error) {
+      console.error('Error sharing:', error)
+      alert('Error al compartir. Intente nuevamente.')
+    } finally {
+      setGeneratingPdf(false)
+    }
   }
 
   const getFuelLevelPosition = (level: number | undefined) => {
@@ -244,11 +317,12 @@ ${settings.companyName || 'Rent Car'}`
               </div>
               <Button
                 variant="outline"
-                leftIcon={<Share2 className="h-4 w-4" />}
+                leftIcon={generatingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
                 onClick={handleShareWhatsApp}
-                className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600"
+                disabled={generatingPdf}
+                className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600 disabled:opacity-50"
               >
-                <span className="hidden sm:inline">Compartir</span> WhatsApp
+                {generatingPdf ? 'Generando...' : <><span className="hidden sm:inline">Compartir</span> WhatsApp</>}
               </Button>
             </>
           ) : (

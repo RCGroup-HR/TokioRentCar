@@ -34,7 +34,8 @@
       "Bash(git push:*)",
       "Bash(ssh root@38.242.218.24 \"cd /var/www/TokioRentCar/app && git status\")",
       "Bash(ssh -o ConnectTimeout=10 root@38.242.218.24 \"cd /var/www/TokioRentCar/app && cat src/app/api/settings/route.ts | head -50\")",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(sshpass -p \"Domino1234\" ssh -o StrictHostKeyChecking=no root@38.242.218.24 \"cd /var/www/TokioRentCar && git pull origin main && cd app && npm run build && pm2 restart tokio-app\")"
     ]
   }
 }
