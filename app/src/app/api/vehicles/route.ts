@@ -35,12 +35,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      const searchLower = search.toLowerCase()
+      // MySQL: contains es case-insensitive por defecto con collation utf8mb4_unicode_ci
       where.OR = [
-        { brand: { contains: searchLower, mode: "insensitive" } },
-        { model: { contains: searchLower, mode: "insensitive" } },
-        { licensePlate: { contains: searchLower, mode: "insensitive" } },
-        { color: { contains: searchLower, mode: "insensitive" } },
+        { brand: { contains: search } },
+        { model: { contains: search } },
+        { licensePlate: { contains: search } },
+        { color: { contains: search } },
       ]
     }
 
