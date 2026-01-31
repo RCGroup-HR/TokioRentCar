@@ -118,7 +118,7 @@ export default function NuevaRentaPage() {
   const fetchData = async () => {
     try {
       const [vehiclesRes, locationsRes, agentsRes] = await Promise.all([
-        fetch("/api/vehicles?status=AVAILABLE&limit=100"),
+        fetch("/api/vehicles?available=true&limit=100"),
         fetch("/api/locations"),
         fetch("/api/users?role=AGENT,ADMIN,SUPER_ADMIN&limit=100"),
       ])

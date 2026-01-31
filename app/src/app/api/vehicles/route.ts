@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (available === "true") {
-      where.status = "AVAILABLE"
+      // Mostrar todos los vehículos EXCEPTO los rentados
+      where.status = { not: "RENTED" }
     }
 
     if (search) {
