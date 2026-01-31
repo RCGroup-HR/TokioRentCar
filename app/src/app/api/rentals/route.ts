@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { generateContractNumber, calculateDaysBetween } from "@/lib/utils"
+import { sendRentalNotification } from "@/lib/email"
 
 export async function GET(request: NextRequest) {
   try {
@@ -316,6 +317,29 @@ export async function POST(request: Request) {
           amount: commissionAmount,
           status: "PENDING",
         },
+      })
+    }
+
+    // Send email notifications (async, don't wait)
+    const primaryCustomer = rental.rentalCustomers[0]?.customer
+    if (primaryCustomer) {
+      sendRentalNotification({
+        contractNumber: rental.contractNumber,
+        customerName: `${primaryCustomer.firstName} ${primaryCustomer.lastName}`.trim(),
+        customerEmail: primaryCustomer.email,
+        customerPhone: primaryCustomer.phone || undefined,
+        vehicleName: `${rental.vehicle.brand} ${rental.vehicle.model} ${rental.vehicle.year}`,
+        licensePlate: rental.vehicle.licensePlate || undefined,
+        startDate: rental.startDate,
+        expectedEndDate: rental.expectedEndDate,
+        totalDays: rental.totalDays,
+        dailyRate: rental.dailyRate,
+        totalAmount: rental.totalAmount,
+        depositAmount: rental.depositAmount,
+        pickupLocation: rental.pickupLocation,
+        agentName: rental.agent ? `${rental.agent.firstName} ${rental.agent.lastName}`.trim() : undefined,
+      }).catch((error) => {
+        console.error("Error sending rental notification:", error)
       })
     }
 

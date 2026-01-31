@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { generateReservationCode, calculateDaysBetween } from "@/lib/utils"
+import { sendReservationNotification } from "@/lib/email"
 
 export async function GET(request: NextRequest) {
   try {
@@ -228,6 +229,22 @@ export async function POST(request: Request) {
     await prisma.vehicle.update({
       where: { id: data.vehicleId },
       data: { status: "RESERVED" },
+    })
+
+    // Send email notifications (async, don't wait)
+    sendReservationNotification({
+      reservationCode: reservation.reservationCode,
+      customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`.trim(),
+      customerEmail: data.customerEmail,
+      customerPhone: data.customerPhone,
+      vehicleName: `${reservation.vehicle.brand} ${reservation.vehicle.model} ${reservation.vehicle.year}`,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      totalDays: reservation.totalDays,
+      totalAmount: reservation.totalAmount,
+      pickupLocation: reservation.pickupLocation,
+    }).catch((error) => {
+      console.error("Error sending reservation notification:", error)
     })
 
     return NextResponse.json(reservation, { status: 201 })
