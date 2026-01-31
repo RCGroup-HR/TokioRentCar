@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { Button, SignaturePad } from "@/components/ui"
 import {
   Plus,
@@ -14,6 +15,7 @@ import {
   Users as UsersIcon,
   PenTool,
   CheckCircle,
+  Key,
 } from "lucide-react"
 
 interface User {
@@ -48,6 +50,7 @@ const roleColors: Record<string, string> = {
 }
 
 export default function UsuariosPage() {
+  const { data: session } = useSession()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -65,6 +68,16 @@ export default function UsuariosPage() {
     signature: null as string | null,
   })
   const [showSignatureSection, setShowSignatureSection] = useState(false)
+
+  // Modal para cambiar contraseña
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordUser, setPasswordUser] = useState<User | null>(null)
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordError, setPasswordError] = useState("")
+
+  // El usuario actual es SUPER_ADMIN?
+  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN"
 
   const fetchUsers = async () => {
     try {
@@ -128,6 +141,17 @@ export default function UsuariosPage() {
   }
 
   const toggleUserStatus = async (user: User) => {
+    // Solo SUPER_ADMIN puede desactivar cualquier usuario
+    if (!isSuperAdmin && ["SUPER_ADMIN", "ADMIN"].includes(user.role)) {
+      alert("Solo un Super Admin puede desactivar administradores")
+      return
+    }
+
+    const action = user.isActive ? "desactivar" : "activar"
+    if (!confirm(`¿Está seguro de ${action} a ${user.firstName} ${user.lastName}?`)) {
+      return
+    }
+
     try {
       const res = await fetch(`/api/users/${user.id}`, {
         method: "PUT",
@@ -137,9 +161,74 @@ export default function UsuariosPage() {
 
       if (res.ok) {
         fetchUsers()
+      } else {
+        const error = await res.json()
+        alert(error.error || "Error al cambiar estado del usuario")
       }
     } catch (error) {
       console.error("Error toggling user status:", error)
+    }
+  }
+
+  // Abrir modal para cambiar contraseña
+  const openPasswordModal = (user: User) => {
+    setPasswordUser(user)
+    setNewPassword("")
+    setConfirmPassword("")
+    setPasswordError("")
+    setShowPasswordModal(true)
+  }
+
+  // Cambiar contraseña
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError("")
+
+    if (newPassword.length < 8) {
+      setPasswordError("La contraseña debe tener al menos 8 caracteres")
+      return
+    }
+
+    if (!/[A-Z]/.test(newPassword)) {
+      setPasswordError("La contraseña debe contener al menos una mayúscula")
+      return
+    }
+
+    if (!/[a-z]/.test(newPassword)) {
+      setPasswordError("La contraseña debe contener al menos una minúscula")
+      return
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      setPasswordError("La contraseña debe contener al menos un número")
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Las contraseñas no coinciden")
+      return
+    }
+
+    if (!passwordUser) return
+
+    try {
+      const res = await fetch(`/api/users/${passwordUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
+      })
+
+      if (res.ok) {
+        alert(`Contraseña de ${passwordUser.firstName} ${passwordUser.lastName} actualizada correctamente`)
+        setShowPasswordModal(false)
+        setPasswordUser(null)
+      } else {
+        const error = await res.json()
+        setPasswordError(error.error || "Error al cambiar contraseña")
+      }
+    } catch (error) {
+      console.error("Error changing password:", error)
+      setPasswordError("Error de conexión")
     }
   }
 
@@ -387,21 +476,34 @@ export default function UsuariosPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => toggleUserStatus(user)}
-                          className={`p-1 ${
-                            user.isActive
-                              ? "text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-                              : "text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400"
-                          }`}
-                          title={user.isActive ? "Desactivar" : "Activar"}
-                        >
-                          {user.isActive ? (
-                            <UserX className="h-4 w-4" />
-                          ) : (
-                            <UserCheck className="h-4 w-4" />
-                          )}
-                        </button>
+                        {/* Botón de cambiar contraseña - Solo SUPER_ADMIN */}
+                        {isSuperAdmin && (
+                          <button
+                            onClick={() => openPasswordModal(user)}
+                            className="p-1 text-gray-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-400"
+                            title="Cambiar Contraseña"
+                          >
+                            <Key className="h-4 w-4" />
+                          </button>
+                        )}
+                        {/* Botón de activar/desactivar - SUPER_ADMIN puede con todos, ADMIN solo con no-admins */}
+                        {(isSuperAdmin || !["SUPER_ADMIN", "ADMIN"].includes(user.role)) && (
+                          <button
+                            onClick={() => toggleUserStatus(user)}
+                            className={`p-1 ${
+                              user.isActive
+                                ? "text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                                : "text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400"
+                            }`}
+                            title={user.isActive ? "Desactivar" : "Activar"}
+                          >
+                            {user.isActive ? (
+                              <UserX className="h-4 w-4" />
+                            ) : (
+                              <UserCheck className="h-4 w-4" />
+                            )}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -411,6 +513,92 @@ export default function UsuariosPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de Cambiar Contraseña */}
+      {showPasswordModal && passwordUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <Key className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    Cambiar Contraseña
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {passwordUser.firstName} {passwordUser.lastName}
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nueva Contraseña
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-3 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Mínimo 8 caracteres"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Confirmar Contraseña
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-3 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Repita la contraseña"
+                  />
+                </div>
+
+                {passwordError && (
+                  <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                    {passwordError}
+                  </div>
+                )}
+
+                <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <p className="font-medium mb-1">Requisitos de contraseña:</p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    <li>Mínimo 8 caracteres</li>
+                    <li>Al menos una mayúscula (A-Z)</li>
+                    <li>Al menos una minúscula (a-z)</li>
+                    <li>Al menos un número (0-9)</li>
+                  </ul>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowPasswordModal(false)
+                      setPasswordUser(null)
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="flex-1">
+                    Cambiar Contraseña
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (

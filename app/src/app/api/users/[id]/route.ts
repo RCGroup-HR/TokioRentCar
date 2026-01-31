@@ -82,6 +82,20 @@ export async function PUT(
       )
     }
 
+    // Solo SUPER_ADMIN puede modificar contraseña o estado de otros ADMIN/SUPER_ADMIN
+    const targetIsAdmin = ["SUPER_ADMIN", "ADMIN"].includes(existingUser.role)
+    const isSuperAdmin = session.user.role === "SUPER_ADMIN"
+
+    if (targetIsAdmin && !isSuperAdmin) {
+      // Un ADMIN no puede cambiar contraseña ni estado de otro admin
+      if (data.password !== undefined || data.isActive !== undefined) {
+        return NextResponse.json(
+          { error: "Solo un Super Admin puede modificar contraseña o estado de administradores" },
+          { status: 403 }
+        )
+      }
+    }
+
     // Check if email is being changed and if it's already in use
     if (data.email && data.email !== existingUser.email) {
       const emailInUse = await prisma.user.findUnique({

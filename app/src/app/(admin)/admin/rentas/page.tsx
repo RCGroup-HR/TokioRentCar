@@ -255,9 +255,9 @@ export default function RentasPage() {
             ))}
           </select>
         </div>
-        <div className="flex flex-col sm:flex-row gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-4 items-end">
+          <div className="col-span-1 sm:flex-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Desde
             </label>
             <input
@@ -267,11 +267,11 @@ export default function RentasPage() {
                 setDateFrom(e.target.value)
                 setPage(1)
               }}
-              className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white"
+              className="w-full px-2 sm:px-4 py-2 text-sm border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white"
             />
           </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div className="col-span-1 sm:flex-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Hasta
             </label>
             <input
@@ -281,21 +281,24 @@ export default function RentasPage() {
                 setDateTo(e.target.value)
                 setPage(1)
               }}
-              className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white"
+              className="w-full px-2 sm:px-4 py-2 text-sm border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white"
             />
           </div>
           {(dateFrom || dateTo) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setDateFrom("")
-                setDateTo("")
-                setPage(1)
-              }}
-            >
-              Limpiar fechas
-            </Button>
+            <div className="col-span-2 sm:col-span-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  setDateFrom("")
+                  setDateTo("")
+                  setPage(1)
+                }}
+              >
+                Limpiar
+              </Button>
+            </div>
           )}
         </div>
       </div>

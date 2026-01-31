@@ -7,7 +7,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { formatCurrency } from "@/lib/utils"
-import { ArrowLeft, Printer, Download, Car, Calendar, User, FileText, PenTool, CheckCircle } from "lucide-react"
+import { ArrowLeft, Printer, Download, Car, Calendar, User, FileText, PenTool, CheckCircle, Share2 } from "lucide-react"
 
 interface Customer {
   id: string
@@ -138,6 +138,41 @@ export default function RentalDetailPage() {
     window.print()
   }
 
+  const handleShareWhatsApp = () => {
+    if (!rental || !customer) return
+
+    const vehicleName = `${rental.vehicle.brand} ${rental.vehicle.model} ${rental.vehicle.year}`
+    const startDate = formatDate(rental.startDate)
+    const endDate = formatDate(rental.expectedEndDate)
+    const total = formatCurrency(rental.totalAmount, settings.currency, settings.currencySymbol)
+
+    const message = `🚗 *Contrato de Alquiler*
+━━━━━━━━━━━━━━━
+📋 *No. ${rental.contractNumber}*
+
+👤 *Cliente:* ${customer.firstName} ${customer.lastName}
+📱 *Teléfono:* ${customer.phone}
+
+🚙 *Vehículo:* ${vehicleName}
+🔢 *Placa:* ${rental.vehicle.licensePlate}
+
+📅 *Período:*
+   Desde: ${startDate}
+   Hasta: ${endDate}
+   Total: ${rental.totalDays} día${rental.totalDays > 1 ? 's' : ''}
+
+💰 *Total:* ${total}
+
+✅ Contrato firmado digitalmente
+━━━━━━━━━━━━━━━
+${settings.companyName || 'Rent Car'}`
+
+    const encodedMessage = encodeURIComponent(message)
+    const whatsappUrl = `https://wa.me/${customer.phone.replace(/\D/g, '')}?text=${encodedMessage}`
+
+    window.open(whatsappUrl, '_blank')
+  }
+
   const getFuelLevelPosition = (level: number | undefined) => {
     if (!level) return 0
     // Convert percentage to position (0-100)
@@ -200,21 +235,31 @@ export default function RentalDetailPage() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {rental.signedAt ? (
-            <div className="flex items-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 rounded-lg text-sm">
-              <CheckCircle className="h-4 w-4" />
-              Firmado
-            </div>
+            <>
+              <div className="flex items-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 rounded-lg text-sm">
+                <CheckCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">Firmado</span>
+              </div>
+              <Button
+                variant="outline"
+                leftIcon={<Share2 className="h-4 w-4" />}
+                onClick={handleShareWhatsApp}
+                className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600"
+              >
+                <span className="hidden sm:inline">Compartir</span> WhatsApp
+              </Button>
+            </>
           ) : (
             <Link href={`/admin/rentas/${params.id}/firmar`}>
               <Button variant="outline" leftIcon={<PenTool className="h-4 w-4" />}>
-                Firmar Contrato
+                <span className="hidden sm:inline">Firmar</span> Contrato
               </Button>
             </Link>
           )}
           <Button variant="outline" leftIcon={<Printer className="h-4 w-4" />} onClick={handlePrint}>
-            Imprimir
+            <span className="hidden sm:inline">Imprimir</span>
           </Button>
         </div>
       </div>
