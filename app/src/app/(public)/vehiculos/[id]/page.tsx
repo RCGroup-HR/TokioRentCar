@@ -116,9 +116,12 @@ export default function VehicleDetailPage() {
       if (response.ok) {
         const data = await response.json()
         setLocations(data)
+        // Pre-select default location if available
         if (data.length > 0) {
-          const defaultLocation = data.find((l: Location & { isDefault: boolean }) => l.isDefault) || data[0]
-          setPickupLocation(defaultLocation.name)
+          const defaultLocation = data.find((l: Location & { isDefault: boolean }) => l.isDefault)
+          if (defaultLocation) {
+            setPickupLocation(defaultLocation.name)
+          }
         }
       }
     } catch (error) {
@@ -458,6 +461,7 @@ export default function VehicleDetailPage() {
                         className="w-full h-10 px-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
                         required
                       >
+                        <option value="">Seleccionar ubicación</option>
                         {locations.map((location) => (
                           <option key={location.id} value={location.name}>
                             {location.name}

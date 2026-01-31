@@ -31,7 +31,10 @@
       "Bash(git commit:*)",
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(ssh root@38.242.218.24 \"cd /var/www/TokioRentCar/app && git status\")",
+      "Bash(ssh -o ConnectTimeout=10 root@38.242.218.24 \"cd /var/www/TokioRentCar/app && cat src/app/api/settings/route.ts | head -50\")",
+      "Bash(ssh:*)"
     ]
   }
 }
