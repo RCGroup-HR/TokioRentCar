@@ -73,38 +73,81 @@ export const loginSchema = z.object({
 
 // ==================== CLIENTES ====================
 
+// Helper: convierte string vacío a null
+const emptyToNull = (val: string | null | undefined) =>
+  val === "" || val === undefined ? null : val
+
+// Schema flexible para fechas: acepta YYYY-MM-DD, ISO datetime o vacío
+const flexibleDateSchema = z
+  .string()
+  .optional()
+  .nullable()
+  .transform((val) => {
+    if (!val || val === "") return null
+    // Si es formato YYYY-MM-DD, convertir a ISO
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      return `${val}T00:00:00.000Z`
+    }
+    return val
+  })
+
+// Schema para strings opcionales que pueden venir vacíos
+const optionalString = (maxLength: number) => z
+  .string()
+  .max(maxLength)
+  .optional()
+  .nullable()
+  .transform(emptyToNull)
+
+// Schema para teléfonos opcionales que pueden venir vacíos
+const optionalPhone = z
+  .string()
+  .optional()
+  .nullable()
+  .transform((val) => {
+    if (!val || val === "") return null
+    return val
+  })
+  .refine(
+    (val) => {
+      if (val === null) return true
+      return val.length >= 7 && val.length <= 20 && /^[\d\s\-+()]+$/.test(val)
+    },
+    { message: "Formato de teléfono inválido" }
+  )
+
 export const createCustomerSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
   email: emailSchema,
   phone: phoneSchema,
-  phoneSecondary: phoneSchema.optional().nullable(),
+  phoneSecondary: optionalPhone,
   idType: z.enum(["CEDULA", "PASSPORT", "LICENSE"]).default("CEDULA"),
   idNumber: z
     .string()
     .min(5, "Documento muy corto")
     .max(30, "Documento muy largo")
     .regex(/^[\d\-A-Za-z]+$/, "Formato de documento inválido"),
-  idExpiry: z.string().datetime().optional().nullable(),
-  idImage: z.string().url().optional().nullable(),
-  licenseNumber: z.string().max(30).optional().nullable(),
-  licenseExpiry: z.string().datetime().optional().nullable(),
-  licenseImage: z.string().url().optional().nullable(),
-  licenseCategory: z.string().max(10).optional().nullable(),
-  address: z.string().max(255).optional().nullable(),
-  city: z.string().max(100).optional().nullable(),
-  state: z.string().max(100).optional().nullable(),
-  country: z.string().max(100).default("República Dominicana"),
-  zipCode: z.string().max(20).optional().nullable(),
-  dateOfBirth: z.string().datetime().optional().nullable(),
-  nationality: z.string().max(100).optional().nullable(),
-  occupation: z.string().max(100).optional().nullable(),
-  employer: z.string().max(100).optional().nullable(),
-  employerPhone: phoneSchema.optional().nullable(),
-  emergencyContact: z.string().max(100).optional().nullable(),
-  emergencyPhone: phoneSchema.optional().nullable(),
-  emergencyRelationship: z.string().max(50).optional().nullable(),
-  notes: z.string().max(2000).optional().nullable(),
+  idExpiry: flexibleDateSchema,
+  idImage: optionalString(500),
+  licenseNumber: optionalString(30),
+  licenseExpiry: flexibleDateSchema,
+  licenseImage: optionalString(500),
+  licenseCategory: optionalString(10),
+  address: optionalString(255),
+  city: optionalString(100),
+  state: optionalString(100),
+  country: z.string().max(100).optional().nullable().transform((val) => val || "República Dominicana"),
+  zipCode: optionalString(20),
+  dateOfBirth: flexibleDateSchema,
+  nationality: optionalString(100),
+  occupation: optionalString(100),
+  employer: optionalString(100),
+  employerPhone: optionalPhone,
+  emergencyContact: optionalString(100),
+  emergencyPhone: optionalPhone,
+  emergencyRelationship: optionalString(50),
+  notes: optionalString(2000),
 })
 
 export const updateCustomerSchema = createCustomerSchema.partial().extend({
