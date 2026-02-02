@@ -153,14 +153,14 @@ export default function HomePage() {
       </section>
 
       {/* Featured Vehicles Section */}
-      <section className="py-16">
+      <section className="py-16 bg-white dark:bg-gray-900">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 Vehículos Destacados
               </h2>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-300">
                 Nuestros vehículos más populares
               </p>
             </div>
@@ -182,8 +182,8 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <Car className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              <Car className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
               <p>No hay vehículos destacados disponibles</p>
             </div>
           )}
@@ -192,15 +192,14 @@ export default function HomePage() {
 
       {/* How it Works Section */}
       <section
-        className="py-16"
-        style={{ backgroundColor: `${settings.primaryColor}10` }}
+        className="py-16 bg-amber-50 dark:bg-gray-800"
       >
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
               ¿Cómo Funciona?
             </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Rentar un vehículo nunca fue tan fácil
             </p>
           </div>
@@ -230,10 +229,10 @@ export default function HomePage() {
                 >
                   {item.step}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                   {item.title}
                 </h3>
-                <p className="text-gray-600">{item.description}</p>
+                <p className="text-gray-600 dark:text-gray-300">{item.description}</p>
               </div>
             ))}
           </div>

@@ -53,9 +53,9 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
 
   return (
     <Link href={`/vehiculos/${vehicle.id}`}>
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden card-hover">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden card-hover">
         {/* Image */}
-        <div className="relative aspect-[16/10] bg-gray-100">
+        <div className="relative aspect-[16/10] bg-gray-100 dark:bg-gray-700">
           {primaryImage ? (
             <img
               src={primaryImage.url}
@@ -106,13 +106,13 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
         {/* Content */}
         <div className="p-4">
           {/* Title */}
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {vehicle.brand} {vehicle.model}
           </h3>
-          <p className="text-sm text-gray-500 mb-3">{vehicle.year}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{vehicle.year}</p>
 
           {/* Features */}
-          <div className="flex flex-wrap gap-3 mb-4 text-sm text-gray-600">
+          <div className="flex flex-wrap gap-3 mb-4 text-sm text-gray-600 dark:text-gray-300">
             <span className="flex items-center gap-1">
               <Users className="h-4 w-4" />
               {vehicle.seats}
@@ -134,16 +134,16 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
           </div>
 
           {/* Price */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
             <div>
-              <span className="text-sm text-gray-500">Desde</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Desde</span>
               <p
                 className="text-xl font-bold"
                 style={{ color: settings.primaryColor }}
               >
                 {formatCurrency(vehicle.dailyRate, settings.currency, settings.currencySymbol)}
               </p>
-              <span className="text-sm text-gray-500">/ día</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">/ día</span>
             </div>
             <button
               className="px-4 py-2 rounded-lg font-medium transition"
