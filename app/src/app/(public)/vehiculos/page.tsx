@@ -141,7 +141,7 @@ function VehiclesContent() {
   const hasActiveFilters = search || category || transmission
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <div
         className="py-12"
@@ -163,9 +163,9 @@ function VehiclesContent() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters - Desktop Sidebar */}
           <aside className="hidden lg:block w-72 flex-shrink-0">
-            <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 sticky top-24">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold">Filtros</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filtros</h2>
                 {hasActiveFilters && (
                   <button
                     onClick={clearFilters}
@@ -212,7 +212,7 @@ function VehiclesContent() {
             <div className="flex items-center justify-between mb-6">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm"
+                className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg shadow-sm"
               >
                 <Filter className="h-4 w-4" />
                 Filtros
@@ -225,7 +225,7 @@ function VehiclesContent() {
               </button>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500 hidden sm:inline">
+                <span className="text-sm text-gray-600 dark:text-gray-300 hidden sm:inline">
                   Ordenar por:
                 </span>
                 <Select
@@ -239,11 +239,11 @@ function VehiclesContent() {
 
             {/* Mobile Filters */}
             {showFilters && (
-              <div className="lg:hidden bg-white rounded-xl shadow-sm p-6 mb-6">
+              <div className="lg:hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Filtros</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filtros</h2>
                   <button onClick={() => setShowFilters(false)}>
-                    <X className="h-5 w-5 text-gray-500" />
+                    <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                   </button>
                 </div>
 
@@ -288,7 +288,7 @@ function VehiclesContent() {
 
             {/* Results Count */}
             {pagination && (
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                 Mostrando {vehicles.length} de {pagination.total} vehículos
               </p>
             )}
@@ -316,7 +316,7 @@ function VehiclesContent() {
                     >
                       Anterior
                     </Button>
-                    <span className="flex items-center px-4 text-sm text-gray-600">
+                    <span className="flex items-center px-4 text-sm text-gray-600 dark:text-gray-300">
                       Página {page} de {pagination.totalPages}
                     </span>
                     <Button
@@ -330,12 +330,12 @@ function VehiclesContent() {
                 )}
               </>
             ) : (
-              <div className="text-center py-16 bg-white rounded-xl">
-                <Car className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl">
+                <Car className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                   No se encontraron vehículos
                 </h3>
-                <p className="text-gray-500 mb-4">
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
                   Intenta ajustar los filtros de búsqueda
                 </p>
                 <Button variant="outline" onClick={clearFilters}>
