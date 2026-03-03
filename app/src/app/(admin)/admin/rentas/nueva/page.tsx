@@ -309,13 +309,31 @@ export default function NuevaRentaPage() {
     try {
       const res = await fetch(`/api/rentals/${createdRental.id}/sign-token`, { method: "POST" })
       const data = await res.json()
-      if (res.ok) {
-        setSignUrl(data.signUrl)
-        const message = `Hola, te enviamos el enlace para firmar tu contrato de alquiler #${createdRental.contractNumber}:\n\n${data.signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
-        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
-      } else {
+      if (!res.ok) {
         alert(data.error || "Error al generar el link")
+        return
       }
+
+      setSignUrl(data.signUrl)
+      const message = `Hola, te enviamos el enlace para firmar tu contrato de alquiler #${createdRental.contractNumber}:\n\n${data.signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
+
+      // En móvil: adjuntar imagen del vehículo con Web Share API
+      const vehicleImg = selectedVehicle?.images?.find(i => i.isPrimary) || selectedVehicle?.images?.[0]
+      if (vehicleImg?.url && typeof navigator !== "undefined" && navigator.share) {
+        try {
+          const blob = await fetch(vehicleImg.url).then(r => r.blob())
+          const imageFile = new File([blob], "vehiculo.jpg", { type: blob.type || "image/jpeg" })
+          if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+            await navigator.share({ files: [imageFile], text: message })
+            return
+          }
+        } catch {
+          // ignorar y caer al fallback
+        }
+      }
+
+      // Fallback: abrir WhatsApp con texto
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
     } catch {
       alert("Error de conexión")
     } finally {
@@ -423,8 +441,19 @@ export default function NuevaRentaPage() {
                       Copiar link
                     </button>
                     <button
-                      onClick={() => {
-                        const msg = `Hola, aquí está el enlace para firmar tu contrato #${createdRental.contractNumber}:\n\n${signUrl}`
+                      onClick={async () => {
+                        const msg = `Hola, aquí está el enlace para firmar tu contrato #${createdRental.contractNumber}:\n\n${signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
+                        const vehicleImg = selectedVehicle?.images?.find(i => i.isPrimary) || selectedVehicle?.images?.[0]
+                        if (vehicleImg?.url && typeof navigator !== "undefined" && navigator.share) {
+                          try {
+                            const blob = await fetch(vehicleImg.url).then(r => r.blob())
+                            const imageFile = new File([blob], "vehiculo.jpg", { type: blob.type || "image/jpeg" })
+                            if (navigator.canShare?.({ files: [imageFile] })) {
+                              await navigator.share({ files: [imageFile], text: msg })
+                              return
+                            }
+                          } catch {}
+                        }
                         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
                       }}
                       className="flex items-center gap-1 text-xs px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition"

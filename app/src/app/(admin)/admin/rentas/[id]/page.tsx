@@ -222,11 +222,28 @@ export default function RentalDetailPage() {
     })
   }
 
-  const handleShareLinkWhatsApp = () => {
+  const handleShareLinkWhatsApp = async () => {
     if (!signUrl || !rental) return
-    const customer = rental.rentalCustomers[0]?.customer
-    const name = customer ? `${customer.firstName}` : "cliente"
-    const message = `Hola ${name}, te enviamos el enlace para firmar tu contrato de alquiler #${rental.contractNumber}:\n\n${signUrl}\n\nPor favor firma a la brevedad posible.`
+    const customerData = rental.rentalCustomers[0]?.customer
+    const name = customerData ? `${customerData.firstName}` : "cliente"
+    const message = `Hola ${name}, te enviamos el enlace para firmar tu contrato de alquiler #${rental.contractNumber}:\n\n${signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
+
+    // En móvil: intentar adjuntar imagen del vehículo con Web Share API
+    const vehicleImg = rental.vehicle.images.find(i => i.isPrimary) || rental.vehicle.images[0]
+    if (vehicleImg?.url && typeof navigator !== "undefined" && navigator.share) {
+      try {
+        const blob = await fetch(vehicleImg.url).then(r => r.blob())
+        const imageFile = new File([blob], "vehiculo.jpg", { type: blob.type || "image/jpeg" })
+        if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+          await navigator.share({ files: [imageFile], text: message })
+          return
+        }
+      } catch {
+        // ignorar errores de fetch y caer al fallback
+      }
+    }
+
+    // Fallback: abrir WhatsApp con texto solamente
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
   }
 
@@ -320,70 +337,64 @@ export default function RentalDetailPage() {
     setGeneratingPdf(true)
 
     try {
-      const pdfBlob = await generatePDF()
+      const vehicleName = `${rental.vehicle.brand} ${rental.vehicle.model} ${rental.vehicle.year}`
+      const startDate = formatDate(rental.startDate)
+      const endDate = formatDate(rental.expectedEndDate)
+      const total = formatCurrency(rental.totalAmount, settings.currency, settings.currencySymbol)
 
-      if (!pdfBlob) {
-        alert('Error al generar el PDF')
-        setGeneratingPdf(false)
-        return
-      }
+      const message = `🚗 *Contrato de Alquiler #${rental.contractNumber}*
+━━━━━━━━━━━━━━━
+👤 *Cliente:* ${customer.firstName} ${customer.lastName}
+🚙 *Vehículo:* ${vehicleName}
+🔢 *Placa:* ${rental.vehicle.licensePlate}
 
-      const fileName = `Contrato-${rental.contractNumber}.pdf`
-      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' })
+📅 Desde: ${startDate}
+📅 Hasta: ${endDate}
+💰 *Total:* ${total}
+━━━━━━━━━━━━━━━
+${settings.companyName || 'Rent Car'}`
 
-      // Check if Web Share API is available and supports files
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        await navigator.share({
-          files: [pdfFile],
-          title: `Contrato ${rental.contractNumber}`,
-          text: `Contrato de alquiler - ${settings.companyName || 'Rent Car'}`,
+      // Generar imagen JPEG del contrato con html2canvas
+      if (contractRef.current) {
+        const canvas = await html2canvas(contractRef.current, {
+          scale: 1.5,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
         })
-      } else {
-        // Fallback: Download PDF and open WhatsApp with message
-        const url = URL.createObjectURL(pdfBlob)
+
+        const imageBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error("toBlob failed"))), 'image/jpeg', 0.85)
+        })
+
+        const imageFile = new File([imageBlob], `Contrato-${rental.contractNumber}.jpg`, { type: 'image/jpeg' })
+
+        // En móvil: compartir imagen + texto con la API nativa
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+          await navigator.share({ files: [imageFile], text: message })
+          return
+        }
+
+        // Fallback escritorio: descargar imagen y abrir WhatsApp con texto
+        const url = URL.createObjectURL(imageBlob)
         const a = document.createElement('a')
         a.href = url
-        a.download = fileName
+        a.download = `Contrato-${rental.contractNumber}.jpg`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
 
-        // Open WhatsApp with message
-        const vehicleName = `${rental.vehicle.brand} ${rental.vehicle.model} ${rental.vehicle.year}`
-        const startDate = formatDate(rental.startDate)
-        const endDate = formatDate(rental.expectedEndDate)
-        const total = formatCurrency(rental.totalAmount, settings.currency, settings.currencySymbol)
-
-        const message = `🚗 *Contrato de Alquiler*
-━━━━━━━━━━━━━━━
-📋 *No. ${rental.contractNumber}*
-
-👤 *Cliente:* ${customer.firstName} ${customer.lastName}
-
-🚙 *Vehículo:* ${vehicleName}
-🔢 *Placa:* ${rental.vehicle.licensePlate}
-
-📅 *Período:*
-   Desde: ${startDate}
-   Hasta: ${endDate}
-
-💰 *Total:* ${total}
-
-📎 *El PDF del contrato se ha descargado. Por favor adjúntelo a este chat.*
-━━━━━━━━━━━━━━━
-${settings.companyName || 'Rent Car'}`
-
-        const encodedMessage = encodeURIComponent(message)
-        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\D/g, '')}?text=${encodedMessage}`
-
+        const phone = customer.phone.replace(/\D/g, '')
         setTimeout(() => {
-          window.open(whatsappUrl, '_blank')
+          window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank')
         }, 500)
       }
     } catch (error) {
-      console.error('Error sharing:', error)
-      alert('Error al compartir. Intente nuevamente.')
+      if ((error as Error)?.name !== 'AbortError') {
+        console.error('Error sharing:', error)
+        alert('Error al compartir. Intente nuevamente.')
+      }
     } finally {
       setGeneratingPdf(false)
     }
