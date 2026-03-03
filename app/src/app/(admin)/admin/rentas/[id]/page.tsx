@@ -898,6 +898,37 @@ ${settings.companyName || 'Rent Car'}`
             Contrato firmado digitalmente el {new Date(rental.signedAt).toLocaleString("es-DO")}
           </div>
         )}
+
+        {/* Fotos de documentos del cliente — incluidas en PDF/impresión */}
+        {(rental.idPhotoUrl || rental.licensePhotoUrl) && (
+          <div className="mt-6 pt-4 border-t border-gray-300">
+            <p className="text-xs font-bold text-black uppercase tracking-wide mb-3">
+              Documentos del Cliente
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              {rental.idPhotoUrl && (
+                <div className="text-center">
+                  <img
+                    src={rental.idPhotoUrl}
+                    alt="Cédula / Pasaporte"
+                    className="w-full max-h-36 object-cover rounded border border-gray-300"
+                  />
+                  <p className="text-xs text-black mt-1 font-medium">Cédula / Pasaporte</p>
+                </div>
+              )}
+              {rental.licensePhotoUrl && (
+                <div className="text-center">
+                  <img
+                    src={rental.licensePhotoUrl}
+                    alt="Licencia de Conducir"
+                    className="w-full max-h-36 object-cover rounded border border-gray-300"
+                  />
+                  <p className="text-xs text-black mt-1 font-medium">Licencia de Conducir</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Documentos del Cliente */}
