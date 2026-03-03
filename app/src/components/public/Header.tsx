@@ -15,6 +15,8 @@ import {
   Car,
   Calendar,
   Settings,
+  Bike,
+  Building2,
 } from "lucide-react"
 
 export function Header() {
@@ -85,7 +87,7 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6">
             <Link
               href="/"
               className="text-gray-700 hover:text-primary transition font-medium"
@@ -94,9 +96,24 @@ export function Header() {
             </Link>
             <Link
               href="/vehiculos"
-              className="text-gray-700 hover:text-primary transition font-medium"
+              className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition font-medium"
             >
+              <Car className="h-4 w-4" />
               Vehículos
+            </Link>
+            <Link
+              href="/motores"
+              className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition font-medium"
+            >
+              <Bike className="h-4 w-4" />
+              Motores
+            </Link>
+            <Link
+              href="/departamentos"
+              className="flex items-center gap-1.5 text-gray-700 hover:text-primary transition font-medium"
+            >
+              <Building2 className="h-4 w-4" />
+              Departamentos
             </Link>
             <Link
               href="/ubicaciones"
@@ -185,10 +202,27 @@ export function Header() {
             </Link>
             <Link
               href="/vehiculos"
-              className="block py-2 text-gray-700 hover:text-primary transition"
+              className="flex items-center gap-2 py-2 text-gray-700 hover:text-primary transition"
               onClick={() => setIsMenuOpen(false)}
             >
+              <Car className="h-4 w-4" />
               Vehículos
+            </Link>
+            <Link
+              href="/motores"
+              className="flex items-center gap-2 py-2 text-gray-700 hover:text-primary transition"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <Bike className="h-4 w-4" />
+              Motores
+            </Link>
+            <Link
+              href="/departamentos"
+              className="flex items-center gap-2 py-2 text-gray-700 hover:text-primary transition"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <Building2 className="h-4 w-4" />
+              Departamentos
             </Link>
             <Link
               href="/ubicaciones"

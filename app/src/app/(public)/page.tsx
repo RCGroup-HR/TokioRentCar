@@ -49,36 +49,33 @@ interface Apartment {
 export default function HomePage() {
   const { settings } = useSettingsStore()
   const [featuredVehicles, setFeaturedVehicles] = useState<Vehicle[]>([])
-  const [featuredMotores, setFeaturedMotores] = useState<Vehicle[]>([])
-  const [featuredApartments, setFeaturedApartments] = useState<Apartment[]>([])
-  const [loading, setLoading] = useState(true)
+  const [allMotores, setAllMotores] = useState<Vehicle[]>([])
+  const [allApartments, setAllApartments] = useState<Apartment[]>([])
+  const [loadingVehicles, setLoadingVehicles] = useState(true)
+  const [loadingMotores, setLoadingMotores] = useState(true)
+  const [loadingApartments, setLoadingApartments] = useState(true)
 
   useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [vehiclesRes, motoresRes, apartmentsRes] = await Promise.all([
-          fetch("/api/vehicles?featured=true&available=true&limit=6&vehicleType=CAR"),
-          fetch("/api/vehicles?featured=true&available=true&limit=3&vehicleType=MOTOR"),
-          fetch("/api/apartments?featured=true&available=true&limit=3"),
-        ])
+    // Vehículos destacados
+    fetch("/api/vehicles?featured=true&available=true&limit=6&vehicleType=CAR")
+      .then((res) => res.json())
+      .then((data) => setFeaturedVehicles(data.vehicles || []))
+      .catch(() => {})
+      .finally(() => setLoadingVehicles(false))
 
-        const [vehiclesData, motoresData, apartmentsData] = await Promise.all([
-          vehiclesRes.json(),
-          motoresRes.json(),
-          apartmentsRes.json(),
-        ])
+    // Todos los motores disponibles (máx 6)
+    fetch("/api/vehicles?available=true&limit=6&vehicleType=MOTOR")
+      .then((res) => res.json())
+      .then((data) => setAllMotores(data.vehicles || []))
+      .catch(() => {})
+      .finally(() => setLoadingMotores(false))
 
-        setFeaturedVehicles(vehiclesData.vehicles || [])
-        setFeaturedMotores(motoresData.vehicles || [])
-        setFeaturedApartments(apartmentsData.apartments || [])
-      } catch (error) {
-        console.error("Error fetching homepage data:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAll()
+    // Todos los departamentos disponibles (máx 6)
+    fetch("/api/apartments?available=true&limit=6")
+      .then((res) => res.json())
+      .then((data) => setAllApartments(data.apartments || []))
+      .catch(() => {})
+      .finally(() => setLoadingApartments(false))
   }, [])
 
   const features = [
@@ -156,7 +153,7 @@ export default function HomePage() {
             {/* Vehículos */}
             <Link href="/vehiculos">
               <div
-                className="flex items-center gap-4 p-5 rounded-xl border-2 hover:shadow-md transition-all group"
+                className="flex items-center gap-4 p-5 rounded-xl border-2 hover:shadow-md transition-all group cursor-pointer"
                 style={{ borderColor: `${settings.primaryColor}40` }}
               >
                 <div
@@ -180,7 +177,7 @@ export default function HomePage() {
             {/* Motores */}
             <Link href="/motores">
               <div
-                className="flex items-center gap-4 p-5 rounded-xl border-2 hover:shadow-md transition-all group"
+                className="flex items-center gap-4 p-5 rounded-xl border-2 hover:shadow-md transition-all group cursor-pointer"
                 style={{ borderColor: `${settings.primaryColor}40` }}
               >
                 <div
@@ -204,7 +201,7 @@ export default function HomePage() {
             {/* Departamentos */}
             <Link href="/departamentos">
               <div
-                className="flex items-center gap-4 p-5 rounded-xl border-2 hover:shadow-md transition-all group"
+                className="flex items-center gap-4 p-5 rounded-xl border-2 hover:shadow-md transition-all group cursor-pointer"
                 style={{ borderColor: `${settings.primaryColor}40` }}
               >
                 <div
@@ -270,11 +267,12 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Vehículos Destacados
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3">
+                <Car className="h-8 w-8" style={{ color: settings.primaryColor }} />
+                Vehículos
               </h2>
               <p className="text-gray-600 dark:text-gray-400">
-                Nuestros carros más populares
+                Carros y SUVs disponibles para alquilar
               </p>
             </div>
             <Link href="/vehiculos">
@@ -284,7 +282,7 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {loading ? (
+          {loadingVehicles ? (
             <div className="flex justify-center py-12">
               <div className="loader" />
             </div>
@@ -295,83 +293,100 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-12">
               <Car className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-              <p>No hay vehículos destacados disponibles</p>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">No hay vehículos disponibles actualmente</p>
+              <Link href="/vehiculos">
+                <Button variant="outline">Ver catálogo completo</Button>
+              </Link>
             </div>
           )}
         </div>
       </section>
 
-      {/* Featured Motores Section */}
-      {(loading || featuredMotores.length > 0) && (
-        <section className="py-16 bg-gray-50 dark:bg-gray-800">
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  Motores Destacados
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Nuestras motocicletas más populares
-                </p>
-              </div>
+      {/* Motores Section — siempre visible */}
+      <section className="py-16 bg-gray-50 dark:bg-gray-800">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3">
+                <Bike className="h-8 w-8" style={{ color: settings.primaryColor }} />
+                Motores
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Motocicletas disponibles para alquilar
+              </p>
+            </div>
+            <Link href="/motores">
+              <Button variant="outline" rightIcon={<ChevronRight className="h-4 w-4" />}>
+                Ver Todos
+              </Button>
+            </Link>
+          </div>
+
+          {loadingMotores ? (
+            <div className="flex justify-center py-12">
+              <div className="loader" />
+            </div>
+          ) : allMotores.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {allMotores.map((vehicle) => (
+                <VehicleCard key={vehicle.id} vehicle={vehicle} basePath="/motores" />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Bike className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+              <p className="text-gray-500 dark:text-gray-400 mb-4">No hay motores disponibles actualmente</p>
               <Link href="/motores">
-                <Button variant="outline" rightIcon={<ChevronRight className="h-4 w-4" />}>
-                  Ver Todos
-                </Button>
+                <Button variant="outline">Ver catálogo completo</Button>
               </Link>
             </div>
+          )}
+        </div>
+      </section>
 
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="loader" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {featuredMotores.map((vehicle) => (
-                  <VehicleCard key={vehicle.id} vehicle={vehicle} basePath="/motores" />
-                ))}
-              </div>
-            )}
+      {/* Departamentos Section — siempre visible */}
+      <section className="py-16 bg-white dark:bg-gray-900">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3">
+                <Building2 className="h-8 w-8" style={{ color: settings.primaryColor }} />
+                Departamentos
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Propiedades disponibles para alquilar
+              </p>
+            </div>
+            <Link href="/departamentos">
+              <Button variant="outline" rightIcon={<ChevronRight className="h-4 w-4" />}>
+                Ver Todos
+              </Button>
+            </Link>
           </div>
-        </section>
-      )}
 
-      {/* Featured Apartments Section */}
-      {(loading || featuredApartments.length > 0) && (
-        <section className="py-16 bg-white dark:bg-gray-900">
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  Departamentos Destacados
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Propiedades seleccionadas para ti
-                </p>
-              </div>
+          {loadingApartments ? (
+            <div className="flex justify-center py-12">
+              <div className="loader" />
+            </div>
+          ) : allApartments.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {allApartments.map((apartment) => (
+                <ApartmentCard key={apartment.id} apartment={apartment} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Building2 className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+              <p className="text-gray-500 dark:text-gray-400 mb-4">No hay departamentos disponibles actualmente</p>
               <Link href="/departamentos">
-                <Button variant="outline" rightIcon={<ChevronRight className="h-4 w-4" />}>
-                  Ver Todos
-                </Button>
+                <Button variant="outline">Ver catálogo completo</Button>
               </Link>
             </div>
-
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="loader" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {featuredApartments.map((apartment) => (
-                  <ApartmentCard key={apartment.id} apartment={apartment} />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+          )}
+        </div>
+      </section>
 
       {/* How it Works Section */}
       <section className="py-16 bg-amber-50 dark:bg-gray-800">
