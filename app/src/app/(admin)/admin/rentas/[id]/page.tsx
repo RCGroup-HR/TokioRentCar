@@ -7,7 +7,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { formatCurrency } from "@/lib/utils"
-import { ArrowLeft, Printer, Download, Car, Calendar, User, FileText, PenTool, CheckCircle, Share2, Loader2 } from "lucide-react"
+import { ArrowLeft, Printer, Download, Car, Calendar, User, FileText, PenTool, CheckCircle, Share2, Loader2, Link2, Copy, Check, Trash2, ExternalLink } from "lucide-react"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
 
@@ -72,6 +72,7 @@ interface Rental {
   customerSignature?: string | null
   agentSignature?: string | null
   signedAt?: string | null
+  signToken?: string | null
   rentalCustomers: {
     customer: Customer
   }[]
@@ -104,7 +105,14 @@ export default function RentalDetailPage() {
   const [rental, setRental] = useState<Rental | null>(null)
   const [loading, setLoading] = useState(true)
   const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [generatingLink, setGeneratingLink] = useState(false)
+  const [revokingLink, setRevokingLink] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const contractRef = useRef<HTMLDivElement>(null)
+
+  const signUrl = rental?.signToken
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/firmar/${rental.signToken}`
+    : null
 
   useEffect(() => {
     if (params.id) {
@@ -135,6 +143,58 @@ export default function RentalDetailPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleGenerateLink = async () => {
+    if (!rental) return
+    setGeneratingLink(true)
+    try {
+      const res = await fetch(`/api/rentals/${rental.id}/sign-token`, { method: "POST" })
+      const data = await res.json()
+      if (res.ok) {
+        setRental((prev) => prev ? { ...prev, signToken: data.signToken } : prev)
+      } else {
+        alert(data.error || "Error al generar el link")
+      }
+    } catch {
+      alert("Error de conexión")
+    } finally {
+      setGeneratingLink(false)
+    }
+  }
+
+  const handleRevokeLink = async () => {
+    if (!rental || !confirm("¿Seguro que deseas revocar el link de firma? El cliente ya no podrá usarlo.")) return
+    setRevokingLink(true)
+    try {
+      const res = await fetch(`/api/rentals/${rental.id}/sign-token`, { method: "DELETE" })
+      if (res.ok) {
+        setRental((prev) => prev ? { ...prev, signToken: null } : prev)
+      } else {
+        const data = await res.json()
+        alert(data.error || "Error al revocar el link")
+      }
+    } catch {
+      alert("Error de conexión")
+    } finally {
+      setRevokingLink(false)
+    }
+  }
+
+  const handleCopyLink = () => {
+    if (!signUrl) return
+    navigator.clipboard.writeText(signUrl).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    })
+  }
+
+  const handleShareLinkWhatsApp = () => {
+    if (!signUrl || !rental) return
+    const customer = rental.rentalCustomers[0]?.customer
+    const name = customer ? `${customer.firstName}` : "cliente"
+    const message = `Hola ${name}, te enviamos el enlace para firmar tu contrato de alquiler #${rental.contractNumber}:\n\n${signUrl}\n\nPor favor firma a la brevedad posible.`
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
   }
 
   const handlePrint = () => {
@@ -326,17 +386,112 @@ ${settings.companyName || 'Rent Car'}`
               </Button>
             </>
           ) : (
-            <Link href={`/admin/rentas/${params.id}/firmar`}>
-              <Button variant="outline" leftIcon={<PenTool className="h-4 w-4" />}>
-                <span className="hidden sm:inline">Firmar</span> Contrato
-              </Button>
-            </Link>
+            <>
+              {/* Firma presencial */}
+              <Link href={`/admin/rentas/${params.id}/firmar`}>
+                <Button variant="outline" leftIcon={<PenTool className="h-4 w-4" />}>
+                  <span className="hidden sm:inline">Firmar</span> Contrato
+                </Button>
+              </Link>
+
+              {/* Link de firma remota */}
+              {!rental.signToken ? (
+                <Button
+                  variant="outline"
+                  leftIcon={generatingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                  onClick={handleGenerateLink}
+                  disabled={generatingLink}
+                >
+                  <span className="hidden sm:inline">Generar</span> Link
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  leftIcon={<Trash2 className="h-4 w-4" />}
+                  onClick={handleRevokeLink}
+                  disabled={revokingLink}
+                  className="text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  <span className="hidden sm:inline">Revocar</span> Link
+                </Button>
+              )}
+            </>
           )}
           <Button variant="outline" leftIcon={<Printer className="h-4 w-4" />} onClick={handlePrint}>
             <span className="hidden sm:inline">Imprimir</span>
           </Button>
         </div>
       </div>
+
+      {/* Panel link de firma remota — visible solo cuando hay token activo */}
+      {rental.signToken && !rental.signedAt && signUrl && (
+        <div className="print:hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 bg-amber-100 dark:bg-amber-800/50 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Link2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                Link de firma activo
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
+                Envía este enlace al cliente para que firme el contrato desde cualquier dispositivo.
+                El link se invalidará automáticamente una vez firmado.
+              </p>
+              {/* URL del link */}
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 mb-3">
+                <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1 font-mono">
+                  {signUrl}
+                </span>
+                <button
+                  onClick={handleCopyLink}
+                  className="flex-shrink-0 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                  title="Copiar link"
+                >
+                  {linkCopied
+                    ? <Check className="h-4 w-4 text-green-500" />
+                    : <Copy className="h-4 w-4 text-gray-500" />
+                  }
+                </button>
+                <a
+                  href={signUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                  title="Abrir en nueva pestaña"
+                >
+                  <ExternalLink className="h-4 w-4 text-gray-500" />
+                </a>
+              </div>
+              {/* Botones de acción del link */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleCopyLink}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition font-medium"
+                >
+                  {linkCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  {linkCopied ? "¡Copiado!" : "Copiar link"}
+                </button>
+                <button
+                  onClick={handleShareLinkWhatsApp}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition font-medium"
+                >
+                  <Share2 className="h-3 w-3" />
+                  Enviar por WhatsApp
+                </button>
+                <button
+                  onClick={handleRevokeLink}
+                  disabled={revokingLink}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-white dark:bg-gray-800 border border-red-300 text-red-600 hover:bg-red-50 rounded-lg transition font-medium disabled:opacity-50"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Revocar link
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Contract Document */}
       <div

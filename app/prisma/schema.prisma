@@ -401,6 +401,7 @@ model Rental {
   customerSignature String?    @db.LongText  // Base64 de la firma del cliente
   agentSignature    String?    @db.LongText  // Base64 de la firma del agente
   signedAt          DateTime?                // Fecha/hora de firma del contrato
+  signToken         String?    @unique       // Token único para enviar link de firma al cliente
 
   // Pagos
   payments        Payment[]
