@@ -292,7 +292,7 @@ export default function NewVehiclePage() {
                     onChange={(v) => handleSelectChange("fuelType", v)}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className={`grid gap-4 ${formData.vehicleType === "MOTOR" ? "grid-cols-2" : "grid-cols-3"}`}>
                   <Input
                     label="Asientos"
                     name="seats"
@@ -302,15 +302,17 @@ export default function NewVehiclePage() {
                     min={1}
                     max={15}
                   />
-                  <Input
-                    label="Puertas"
-                    name="doors"
-                    type="number"
-                    value={formData.doors}
-                    onChange={handleChange}
-                    min={2}
-                    max={6}
-                  />
+                  {formData.vehicleType !== "MOTOR" && (
+                    <Input
+                      label="Puertas"
+                      name="doors"
+                      type="number"
+                      value={formData.doors}
+                      onChange={handleChange}
+                      min={2}
+                      max={6}
+                    />
+                  )}
                   <Input
                     label="Kilometraje"
                     name="mileage"

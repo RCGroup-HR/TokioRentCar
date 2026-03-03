@@ -49,8 +49,8 @@ interface Apartment {
 export default function HomePage() {
   const { settings } = useSettingsStore()
   const [featuredVehicles, setFeaturedVehicles] = useState<Vehicle[]>([])
-  const [allMotores, setAllMotores] = useState<Vehicle[]>([])
-  const [allApartments, setAllApartments] = useState<Apartment[]>([])
+  const [featuredMotores, setFeaturedMotores] = useState<Vehicle[]>([])
+  const [featuredApartments, setFeaturedApartments] = useState<Apartment[]>([])
   const [loadingVehicles, setLoadingVehicles] = useState(true)
   const [loadingMotores, setLoadingMotores] = useState(true)
   const [loadingApartments, setLoadingApartments] = useState(true)
@@ -63,17 +63,17 @@ export default function HomePage() {
       .catch(() => {})
       .finally(() => setLoadingVehicles(false))
 
-    // Todos los motores disponibles (máx 6)
-    fetch("/api/vehicles?available=true&limit=6&vehicleType=MOTOR")
+    // Solo motores destacados
+    fetch("/api/vehicles?featured=true&available=true&limit=6&vehicleType=MOTOR")
       .then((res) => res.json())
-      .then((data) => setAllMotores(data.vehicles || []))
+      .then((data) => setFeaturedMotores(data.vehicles || []))
       .catch(() => {})
       .finally(() => setLoadingMotores(false))
 
-    // Todos los departamentos disponibles (máx 6)
-    fetch("/api/apartments?available=true&limit=6")
+    // Solo departamentos destacados
+    fetch("/api/apartments?featured=true&available=true&limit=6")
       .then((res) => res.json())
-      .then((data) => setAllApartments(data.apartments || []))
+      .then((data) => setFeaturedApartments(data.apartments || []))
       .catch(() => {})
       .finally(() => setLoadingApartments(false))
   }, [])
@@ -328,9 +328,9 @@ export default function HomePage() {
             <div className="flex justify-center py-12">
               <div className="loader" />
             </div>
-          ) : allMotores.length > 0 ? (
+          ) : featuredMotores.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {allMotores.map((vehicle) => (
+              {featuredMotores.map((vehicle) => (
                 <VehicleCard key={vehicle.id} vehicle={vehicle} basePath="/motores" />
               ))}
             </div>
@@ -370,9 +370,9 @@ export default function HomePage() {
             <div className="flex justify-center py-12">
               <div className="loader" />
             </div>
-          ) : allApartments.length > 0 ? (
+          ) : featuredApartments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {allApartments.map((apartment) => (
+              {featuredApartments.map((apartment) => (
                 <ApartmentCard key={apartment.id} apartment={apartment} />
               ))}
             </div>

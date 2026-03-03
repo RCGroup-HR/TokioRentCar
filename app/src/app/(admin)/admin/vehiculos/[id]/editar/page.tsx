@@ -41,6 +41,7 @@ interface Vehicle {
   features: string[]
   isFeatured: boolean
   isActive: boolean
+  vehicleType?: string
   images?: VehicleImage[]
 }
 
@@ -56,6 +57,7 @@ export default function EditVehiclePage() {
   const [images, setImages] = useState<VehicleImage[]>([])
   const [uploadingImage, setUploadingImage] = useState(false)
   const [formData, setFormData] = useState({
+    vehicleType: "CAR",
     brand: "",
     model: "",
     year: new Date().getFullYear(),
@@ -93,6 +95,7 @@ export default function EditVehiclePage() {
       if (res.ok) {
         const data: Vehicle = await res.json()
         setFormData({
+          vehicleType: data.vehicleType || "CAR",
           brand: data.brand,
           model: data.model,
           year: data.year,
@@ -577,21 +580,23 @@ export default function EditVehiclePage() {
                 className="w-full px-3 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {language === "en" ? "Doors" : "Puertas"}
-              </label>
-              <input
-                type="number"
-                min="2"
-                max="5"
-                value={formData.doors}
-                onChange={(e) =>
-                  setFormData({ ...formData, doors: parseInt(e.target.value) })
-                }
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
+            {formData.vehicleType !== "MOTOR" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {language === "en" ? "Doors" : "Puertas"}
+                </label>
+                <input
+                  type="number"
+                  min="2"
+                  max="5"
+                  value={formData.doors}
+                  onChange={(e) =>
+                    setFormData({ ...formData, doors: parseInt(e.target.value) })
+                  }
+                  className="w-full px-3 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {language === "en" ? "Mileage" : "Kilometraje"}
