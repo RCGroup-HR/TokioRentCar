@@ -26,7 +26,6 @@ interface RentalData {
   pickupLocation: string
   customerName: string
   agentName: string
-  agentSignature: string | null
   vehicle: {
     brand: string
     model: string
@@ -45,7 +44,7 @@ function formatDate(dateStr: string) {
   })
 }
 
-type PageState = "loading" | "ready" | "already_signed" | "invalid" | "success" | "error"
+type PageState = "loading" | "ready" | "already_signed" | "invalid" | "expired" | "success" | "error"
 
 export default function PublicSignPage() {
   const params = useParams()
@@ -71,6 +70,11 @@ export default function PublicSignPage() {
       const res = await fetch(`/api/public/sign/${token}`)
       const data = await res.json()
 
+      if (res.status === 410 || data.expired) {
+        setPageState("expired")
+        return
+      }
+
       if (!res.ok) {
         setPageState("invalid")
         return
@@ -82,9 +86,15 @@ export default function PublicSignPage() {
         return
       }
 
+      if (!data.rental) {
+        setPageState("invalid")
+        return
+      }
+
       setRental(data.rental)
       setPageState("ready")
     } catch (err) {
+      console.error("[SignPage] Error fetching contract:", err)
       setPageState("invalid")
     }
   }
@@ -155,6 +165,28 @@ export default function PublicSignPage() {
           <p className="text-gray-600 text-sm">
             Este enlace de firma no es válido, ha expirado o ya fue utilizado.
             Contacta con la empresa para obtener un nuevo enlace.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── Expired ───────────────────────────────────────────────
+  if (pageState === "expired") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-md p-8 text-center">
+          {settings.logo ? (
+            <img src={settings.logo} alt={companyName} className="h-12 mx-auto mb-6 object-contain" />
+          ) : (
+            <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>{companyName}</h2>
+          )}
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="h-8 w-8 text-orange-500" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Enlace expirado</h3>
+          <p className="text-gray-600 text-sm">
+            Este enlace de firma ha vencido (48 horas). Contacta con la empresa para que te generen un nuevo enlace.
           </p>
         </div>
       </div>
