@@ -14,6 +14,8 @@ interface SignaturePadProps {
   label?: string
   existingSignature?: string | null
   disabled?: boolean
+  /** Si es true, guarda la firma automáticamente al terminar cada trazo (sin botón "Confirmar Firma") */
+  autoSave?: boolean
 }
 
 export function SignaturePad({
@@ -26,11 +28,14 @@ export function SignaturePad({
   label = "Firma",
   existingSignature = null,
   disabled = false,
+  autoSave = false,
 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasSignature, setHasSignature] = useState(false)
   const [lastPoint, setLastPoint] = useState<{ x: number; y: number } | null>(null)
+  // Ref para evitar problemas de closure estale con autoSave
+  const hasSignatureRef = useRef(false)
 
   // Initialize canvas
   useEffect(() => {
@@ -119,6 +124,7 @@ export function SignaturePad({
         setIsDrawing(true)
         setLastPoint(coords)
         setHasSignature(true)
+        hasSignatureRef.current = true
       }
     },
     [disabled, getCoordinates]
@@ -143,7 +149,14 @@ export function SignaturePad({
   const stopDrawing = useCallback(() => {
     setIsDrawing(false)
     setLastPoint(null)
-  }, [])
+    // Auto-guardar al terminar cada trazo (modo sin botón de confirmación)
+    if (autoSave && hasSignatureRef.current) {
+      const canvas = canvasRef.current
+      if (canvas) {
+        onSave(canvas.toDataURL("image/png"))
+      }
+    }
+  }, [autoSave, onSave])
 
   // Clear canvas
   const clearCanvas = useCallback(() => {
@@ -156,6 +169,7 @@ export function SignaturePad({
     ctx.fillStyle = backgroundColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     setHasSignature(false)
+    hasSignatureRef.current = false
     onClear?.()
   }, [backgroundColor, onClear])
 
@@ -246,16 +260,18 @@ export function SignaturePad({
         >
           Reiniciar
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={saveSignature}
-          disabled={disabled || !hasSignature}
-          leftIcon={<Check className="h-4 w-4" />}
-          className="ml-auto"
-        >
-          Confirmar Firma
-        </Button>
+        {!autoSave && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={saveSignature}
+            disabled={disabled || !hasSignature}
+            leftIcon={<Check className="h-4 w-4" />}
+            className="ml-auto"
+          >
+            Confirmar Firma
+          </Button>
+        )}
       </div>
     </div>
   )

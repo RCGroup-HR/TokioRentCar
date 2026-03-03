@@ -352,8 +352,7 @@ export default function PublicSignPage() {
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <h3 className="font-bold text-gray-900 mb-1">Tu firma</h3>
           <p className="text-sm text-gray-500 mb-4">
-            Firma en el área de abajo para aceptar los términos del contrato.
-            Al firmar confirmas que los datos son correctos.
+            Dibuja tu firma en el área de abajo y luego presiona <strong>Firmar Contrato</strong>.
           </p>
 
           <SignaturePad
@@ -365,7 +364,16 @@ export default function PublicSignPage() {
             }}
             width={undefined}
             height={200}
+            autoSave
           />
+
+          {/* Indicador visual de firma capturada */}
+          {customerSignature && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-green-600">
+              <CheckCircle className="h-4 w-4 flex-shrink-0" />
+              Firma capturada — presiona el botón para finalizar.
+            </div>
+          )}
 
           {submitError && (
             <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-sm text-red-700">
@@ -394,7 +402,7 @@ export default function PublicSignPage() {
           </button>
 
           <p className="text-xs text-gray-400 text-center mt-3">
-            Al hacer clic en "Firmar Contrato" aceptas los términos del contrato de alquiler.
+            Al hacer clic en &quot;Firmar Contrato&quot; aceptas los términos del contrato de alquiler.
             Este documento tiene validez legal.
           </p>
         </div>
