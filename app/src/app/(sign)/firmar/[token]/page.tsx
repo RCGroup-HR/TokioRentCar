@@ -91,10 +91,6 @@ export default function PublicSignPage() {
 
   const handleSignatureSave = useCallback((sig: string) => {
     setCustomerSignature(sig)
-  }, [])
-
-  const handleSignatureConfirm = useCallback((sig: string) => {
-    setCustomerSignature(sig)
     setCustomerSignatureConfirmed(true)
   }, [])
 
