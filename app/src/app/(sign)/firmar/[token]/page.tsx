@@ -96,6 +96,7 @@ export default function PublicSignPage() {
   const [docPhoto, setDocPhoto] = useState<string | null>(null)
   const [processingPhoto, setProcessingPhoto] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!token) return
@@ -414,6 +415,24 @@ export default function PublicSignPage() {
           </div>
 
           {/* Preview o área de captura */}
+          {/* Input oculto: cámara */}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleDocumentCapture}
+            className="hidden"
+          />
+          {/* Input oculto: galería/archivos */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleDocumentCapture}
+            className="hidden"
+          />
+
           {docPhoto ? (
             <div className="relative rounded-xl overflow-hidden">
               <img
@@ -439,41 +458,41 @@ export default function PublicSignPage() {
                 Documento adjunto correctamente.
               </div>
             </div>
+          ) : processingPhoto ? (
+            <div className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-gray-200 rounded-xl">
+              <Loader2 className="h-8 w-8 animate-spin" style={{ color: primaryColor }} />
+              <span className="text-sm text-gray-500">Procesando imagen...</span>
+            </div>
           ) : (
-            <label className="flex flex-col items-center justify-center gap-3 p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-current transition-colors"
-              style={{ "--hover-color": primaryColor } as React.CSSProperties}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleDocumentCapture}
-                className="hidden"
-              />
-              {processingPhoto ? (
-                <>
-                  <Loader2 className="h-8 w-8 animate-spin" style={{ color: primaryColor }} />
-                  <span className="text-sm text-gray-500">Procesando imagen...</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: `${primaryColor}20` }}>
-                    <Camera className="h-7 w-7" style={{ color: primaryColor }} />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-700">
-                      Tomar foto o seleccionar imagen
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {docType === "cedula"
-                        ? "Cédula de identidad o pasaporte"
-                        : "Licencia de conducir"}
-                    </p>
-                  </div>
-                </>
-              )}
-            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Botón: tomar foto con cámara */}
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-gray-300 rounded-xl hover:bg-gray-50 transition"
+              >
+                <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${primaryColor}20` }}>
+                  <Camera className="h-6 w-6" style={{ color: primaryColor }} />
+                </div>
+                <span className="text-sm font-medium text-gray-700">Tomar foto</span>
+                <span className="text-xs text-gray-400">Usar cámara</span>
+              </button>
+
+              {/* Botón: elegir de galería */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-gray-300 rounded-xl hover:bg-gray-50 transition"
+              >
+                <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${primaryColor}20` }}>
+                  <IdCard className="h-6 w-6" style={{ color: primaryColor }} />
+                </div>
+                <span className="text-sm font-medium text-gray-700">Elegir imagen</span>
+                <span className="text-xs text-gray-400">Galería / archivos</span>
+              </button>
+            </div>
           )}
         </div>
 
