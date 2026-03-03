@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { VehicleCard, CatalogTabs } from "@/components/public"
 import { Button, Input, Select } from "@/components/ui"
-import { Search, Filter, X, Car } from "lucide-react"
+import { Search, Filter, X, Bike } from "lucide-react"
 
 interface Vehicle {
   id: string
@@ -35,13 +35,8 @@ const categoryOptions = [
   { value: "ECONOMY", label: "Económico" },
   { value: "COMPACT", label: "Compacto" },
   { value: "MIDSIZE", label: "Mediano" },
-  { value: "FULLSIZE", label: "Tamaño completo" },
-  { value: "SUV", label: "SUV" },
-  { value: "LUXURY", label: "Lujo" },
-  { value: "VAN", label: "Van" },
-  { value: "PICKUP", label: "Pickup" },
-  { value: "CONVERTIBLE", label: "Convertible" },
   { value: "SPORTS", label: "Deportivo" },
+  { value: "LUXURY", label: "Lujo" },
 ]
 
 const transmissionOptions = [
@@ -57,7 +52,7 @@ const sortOptions = [
   { value: "popular", label: "Más populares" },
 ]
 
-function VehiclesContent() {
+function MotoresContent() {
   const searchParams = useSearchParams()
   const { settings } = useSettingsStore()
 
@@ -66,7 +61,6 @@ function VehiclesContent() {
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
 
-  // Filters
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState(searchParams.get("category") || "")
   const [transmission, setTransmission] = useState("")
@@ -74,18 +68,18 @@ function VehiclesContent() {
   const [page, setPage] = useState(1)
 
   useEffect(() => {
-    fetchVehicles()
+    fetchMotores()
   }, [category, transmission, sortBy, page])
 
-  const fetchVehicles = async () => {
+  const fetchMotores = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       params.set("page", page.toString())
       params.set("limit", "12")
       params.set("available", "true")
+      params.set("vehicleType", "MOTOR")
 
-      params.set("vehicleType", "CAR")
       if (search) params.set("search", search)
       if (category) params.set("category", category)
 
@@ -94,7 +88,6 @@ function VehiclesContent() {
 
       let sortedVehicles = data.vehicles || []
 
-      // Client-side filtering and sorting
       if (transmission) {
         sortedVehicles = sortedVehicles.filter(
           (v: Vehicle) => v.transmission === transmission
@@ -112,14 +105,17 @@ function VehiclesContent() {
           sortedVehicles.sort((a: Vehicle, b: Vehicle) => b.year - a.year)
           break
         case "popular":
-          sortedVehicles.sort((a: Vehicle, b: Vehicle) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0))
+          sortedVehicles.sort(
+            (a: Vehicle, b: Vehicle) =>
+              (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0)
+          )
           break
       }
 
       setVehicles(sortedVehicles)
       setPagination(data.pagination)
     } catch (error) {
-      console.error("Error fetching vehicles:", error)
+      console.error("Error fetching motors:", error)
     } finally {
       setLoading(false)
     }
@@ -128,7 +124,7 @@ function VehiclesContent() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setPage(1)
-    fetchVehicles()
+    fetchMotores()
   }
 
   const clearFilters = () => {
@@ -152,15 +148,15 @@ function VehiclesContent() {
       >
         <div className="container mx-auto px-4">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Nuestros Vehículos
+            Nuestros Motores
           </h1>
           <p className="text-gray-200 max-w-2xl">
-            Explora nuestra amplia flota de vehículos y encuentra el perfecto para tu viaje
+            Explora nuestra selección de motores y encuentra el ideal para tu recorrido
           </p>
         </div>
       </div>
 
-      <CatalogTabs activeTab="vehiculos" />
+      <CatalogTabs activeTab="motores" />
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
@@ -168,7 +164,9 @@ function VehiclesContent() {
           <aside className="hidden lg:block w-72 flex-shrink-0">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 sticky top-24">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Filtros</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Filtros
+                </h2>
                 {hasActiveFilters && (
                   <button
                     onClick={clearFilters}
@@ -244,7 +242,9 @@ function VehiclesContent() {
             {showFilters && (
               <div className="lg:hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filtros</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Filtros
+                  </h2>
                   <button onClick={() => setShowFilters(false)}>
                     <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                   </button>
@@ -266,7 +266,6 @@ function VehiclesContent() {
                       value={category}
                       onChange={setCategory}
                     />
-
                     <Select
                       label="Transmisión"
                       options={transmissionOptions}
@@ -292,11 +291,11 @@ function VehiclesContent() {
             {/* Results Count */}
             {pagination && (
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-4">
-                Mostrando {vehicles.length} de {pagination.total} vehículos
+                Mostrando {vehicles.length} de {pagination.total} motores
               </p>
             )}
 
-            {/* Vehicle Grid */}
+            {/* Grid */}
             {loading ? (
               <div className="flex justify-center py-16">
                 <div className="loader" />
@@ -305,11 +304,14 @@ function VehiclesContent() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {vehicles.map((vehicle) => (
-                    <VehicleCard key={vehicle.id} vehicle={vehicle} />
+                    <VehicleCard
+                      key={vehicle.id}
+                      vehicle={vehicle}
+                      basePath="/motores"
+                    />
                   ))}
                 </div>
 
-                {/* Pagination */}
                 {pagination && pagination.totalPages > 1 && (
                   <div className="flex justify-center gap-2 mt-8">
                     <Button
@@ -334,9 +336,9 @@ function VehiclesContent() {
               </>
             ) : (
               <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl">
-                <Car className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                <Bike className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  No se encontraron vehículos
+                  No se encontraron motores
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
                   Intenta ajustar los filtros de búsqueda
@@ -361,10 +363,10 @@ function LoadingFallback() {
   )
 }
 
-export default function VehiclesPage() {
+export default function MotoresPage() {
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <VehiclesContent />
+      <MotoresContent />
     </Suspense>
   )
 }

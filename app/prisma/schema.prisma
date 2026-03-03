@@ -138,6 +138,9 @@ model Vehicle {
   vin             String?       @unique
   color           String
 
+  // Tipo de vehículo (auto o motor)
+  vehicleType     VehicleType   @default(CAR)
+
   // Categoría y tipo
   category        VehicleCategory
   transmission    TransmissionType
@@ -207,6 +210,11 @@ model VehicleImage {
   createdAt DateTime @default(now())
 
   @@index([vehicleId])
+}
+
+enum VehicleType {
+  CAR
+  MOTOR
 }
 
 enum VehicleCategory {
@@ -769,6 +777,84 @@ model Banner {
 
   @@index([isActive])
   @@index([position])
+}
+
+// ==================== DEPARTAMENTOS (PROPIEDADES) ====================
+model Apartment {
+  id              String            @id @default(uuid())
+  name            String
+  description     String?           @db.Text
+  address         String
+  city            String
+  country         String?           @default("República Dominicana")
+
+  // Especificaciones
+  rooms           Int               @default(1)
+  bathrooms       Int               @default(1)
+  maxGuests       Int               @default(2)
+  floor           Int?
+  category        ApartmentCategory @default(ONE_BEDROOM)
+
+  // Amenidades y características
+  amenities       Json?             // Lista de amenidades (wifi, AC, parking, etc.)
+
+  // Precios
+  pricePerNight   Float
+  pricePerWeek    Float?
+  pricePerMonth   Float?
+  depositAmount   Float             @default(0)
+  commissionAmount Float?
+
+  // Estado
+  status          ApartmentStatus   @default(AVAILABLE)
+
+  // Imágenes
+  images          ApartmentImage[]
+
+  // Metadatos
+  isActive        Boolean           @default(true)
+  isFeatured      Boolean           @default(false)
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([status])
+  @@index([isActive])
+  @@index([city])
+  @@index([isActive, isFeatured])
+  @@index([isActive, status])
+}
+
+model ApartmentImage {
+  id           String    @id @default(uuid())
+  apartmentId  String
+  url          String
+  alt          String?
+  isPrimary    Boolean   @default(false)
+  order        Int       @default(0)
+
+  apartment    Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime  @default(now())
+
+  @@index([apartmentId])
+}
+
+enum ApartmentStatus {
+  AVAILABLE
+  RENTED
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum ApartmentCategory {
+  STUDIO
+  ONE_BEDROOM
+  TWO_BEDROOM
+  THREE_BEDROOM
+  PENTHOUSE
+  VILLA
+  OTHER
 }
 
 // ==================== AUDITORÍA ====================

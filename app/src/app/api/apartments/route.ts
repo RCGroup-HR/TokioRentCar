@@ -13,7 +13,6 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")
     const featured = searchParams.get("featured")
     const available = searchParams.get("available")
-    const vehicleType = searchParams.get("vehicleType")
 
     const where: Record<string, unknown> = {
       isActive: true,
@@ -32,50 +31,36 @@ export async function GET(request: NextRequest) {
     }
 
     if (available === "true") {
-      // Mostrar todos los vehículos EXCEPTO los rentados
       where.status = { not: "RENTED" }
     }
 
-    if (vehicleType) {
-      where.vehicleType = vehicleType
-    }
-
     if (search) {
-      // MySQL: contains es case-insensitive por defecto con collation utf8mb4_unicode_ci
       where.OR = [
-        { brand: { contains: search } },
-        { model: { contains: search } },
-        { licensePlate: { contains: search } },
-        { color: { contains: search } },
+        { name: { contains: search } },
+        { city: { contains: search } },
+        { address: { contains: search } },
       ]
     }
 
-    const [vehicles, total] = await Promise.all([
-      prisma.vehicle.findMany({
+    const [apartments, total] = await Promise.all([
+      prisma.apartment.findMany({
         where,
         select: {
           id: true,
-          brand: true,
-          model: true,
-          year: true,
-          licensePlate: true,
-          color: true,
+          name: true,
+          address: true,
+          city: true,
+          country: true,
+          rooms: true,
+          bathrooms: true,
+          maxGuests: true,
           category: true,
-          transmission: true,
-          fuelType: true,
-          seats: true,
-          doors: true,
-          airConditioning: true,
-          dailyRate: true,
-          weeklyRate: true,
-          monthlyRate: true,
+          amenities: true,
+          pricePerNight: true,
+          pricePerWeek: true,
+          pricePerMonth: true,
           depositAmount: true,
           status: true,
-          mileage: true,
-          description: true,
-          features: true,
-          currentLocation: true,
-          vehicleType: true,
           isActive: true,
           isFeatured: true,
           createdAt: true,
@@ -87,18 +72,18 @@ export async function GET(request: NextRequest) {
               order: true,
             },
             orderBy: { order: "asc" },
-            take: 5, // Limitar imágenes para listado
+            take: 5,
           },
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.vehicle.count({ where }),
+      prisma.apartment.count({ where }),
     ])
 
     return NextResponse.json({
-      vehicles,
+      apartments,
       pagination: {
         page,
         limit,
@@ -107,9 +92,9 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Error fetching vehicles:", error)
+    console.error("Error fetching apartments:", error)
     return NextResponse.json(
-      { error: "Error al obtener vehículos" },
+      { error: "Error al obtener departamentos" },
       { status: 500 }
     )
   }
@@ -128,43 +113,36 @@ export async function POST(request: Request) {
 
     const data = await request.json()
 
-    const vehicle = await prisma.vehicle.create({
+    const apartment = await prisma.apartment.create({
       data: {
-        brand: data.brand,
-        model: data.model,
-        year: data.year,
-        licensePlate: data.licensePlate,
-        vin: data.vin,
-        color: data.color,
-        category: data.category,
-        transmission: data.transmission,
-        fuelType: data.fuelType,
-        seats: data.seats || 5,
-        doors: data.doors || 4,
-        airConditioning: data.airConditioning ?? true,
-        dailyRate: data.dailyRate,
-        weeklyRate: data.weeklyRate,
-        monthlyRate: data.monthlyRate,
-        depositAmount: data.depositAmount || 0,
-        mileage: data.mileage || 0,
+        name: data.name,
         description: data.description,
-        features: data.features,
-        currentLocation: data.currentLocation,
-        insuranceExpiry: data.insuranceExpiry ? new Date(data.insuranceExpiry) : null,
-        registrationExpiry: data.registrationExpiry ? new Date(data.registrationExpiry) : null,
+        address: data.address,
+        city: data.city,
+        country: data.country || "República Dominicana",
+        rooms: data.rooms || 1,
+        bathrooms: data.bathrooms || 1,
+        maxGuests: data.maxGuests || 2,
+        floor: data.floor ? parseInt(data.floor) : null,
+        category: data.category || "ONE_BEDROOM",
+        amenities: data.amenities || [],
+        pricePerNight: parseFloat(data.pricePerNight),
+        pricePerWeek: data.pricePerWeek ? parseFloat(data.pricePerWeek) : null,
+        pricePerMonth: data.pricePerMonth ? parseFloat(data.pricePerMonth) : null,
+        depositAmount: data.depositAmount ? parseFloat(data.depositAmount) : 0,
+        commissionAmount: data.commissionAmount ? parseFloat(data.commissionAmount) : null,
         isFeatured: data.isFeatured || false,
-        vehicleType: data.vehicleType || "CAR",
       },
       include: {
         images: true,
       },
     })
 
-    return NextResponse.json(vehicle, { status: 201 })
+    return NextResponse.json(apartment, { status: 201 })
   } catch (error) {
-    console.error("Error creating vehicle:", error)
+    console.error("Error creating apartment:", error)
     return NextResponse.json(
-      { error: "Error al crear vehículo" },
+      { error: "Error al crear departamento" },
       { status: 500 }
     )
   }

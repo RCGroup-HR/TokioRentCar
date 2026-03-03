@@ -28,6 +28,8 @@ import {
   Globe,
   UserCircle,
   History,
+  Bike,
+  Building2,
 } from "lucide-react"
 import { signOut } from "next-auth/react"
 
@@ -44,6 +46,20 @@ const menuItems = [
     titleEn: "Vehicles",
     href: "/admin/vehiculos",
     icon: Car,
+    roles: ["SUPER_ADMIN", "ADMIN", "AGENT"],
+  },
+  {
+    title: "Motores",
+    titleEn: "Motors",
+    href: "/admin/motores",
+    icon: Bike,
+    roles: ["SUPER_ADMIN", "ADMIN", "AGENT"],
+  },
+  {
+    title: "Departamentos",
+    titleEn: "Departments",
+    href: "/admin/departamentos",
+    icon: Building2,
     roles: ["SUPER_ADMIN", "ADMIN", "AGENT"],
   },
   {

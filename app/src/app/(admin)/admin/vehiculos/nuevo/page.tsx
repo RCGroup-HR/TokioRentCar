@@ -49,6 +49,7 @@ export default function NewVehiclePage() {
   const [uploading, setUploading] = useState(false)
 
   const [formData, setFormData] = useState({
+    vehicleType: "CAR",
     brand: "",
     model: "",
     year: new Date().getFullYear(),
@@ -187,6 +188,29 @@ export default function NewVehiclePage() {
                 <CardTitle>Información Básica</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex gap-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 self-center mr-2">
+                    Tipo:
+                  </label>
+                  {[
+                    { value: "CAR", label: "Vehículo" },
+                    { value: "MOTOR", label: "Motor" },
+                  ].map((opt) => (
+                    <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="vehicleType"
+                        value={opt.value}
+                        checked={formData.vehicleType === opt.value}
+                        onChange={handleChange}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {opt.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Marca"
