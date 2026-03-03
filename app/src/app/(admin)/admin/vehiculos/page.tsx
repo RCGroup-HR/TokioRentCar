@@ -90,6 +90,7 @@ export default function AdminVehiclesPage() {
       const params = new URLSearchParams()
       params.set("page", page.toString())
       params.set("limit", "10")
+      params.set("vehicleType", "CAR")
 
       if (search) params.set("search", search)
       if (statusFilter) params.set("status", statusFilter)
