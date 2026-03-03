@@ -517,74 +517,107 @@ ${settings.companyName || 'Rent Car'}`
         </div>
       </div>
 
-      {/* Panel link de firma remota — visible solo cuando hay token activo */}
-      {rental.signToken && !rental.signedAt && signUrl && (
-        <div className="print:hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 bg-amber-100 dark:bg-amber-800/50 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Link2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">
-                Link de firma activo
-              </p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
-                Envía este enlace al cliente para que firme el contrato desde cualquier dispositivo.
-                El link se invalidará automáticamente una vez firmado.
-              </p>
-              {/* URL del link */}
-              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 mb-3">
-                <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1 font-mono">
-                  {signUrl}
-                </span>
-                <button
-                  onClick={handleCopyLink}
-                  className="flex-shrink-0 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                  title="Copiar link"
-                >
-                  {linkCopied
-                    ? <Check className="h-4 w-4 text-green-500" />
-                    : <Copy className="h-4 w-4 text-gray-500" />
-                  }
-                </button>
-                <a
-                  href={signUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-shrink-0 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                  title="Abrir en nueva pestaña"
-                >
-                  <ExternalLink className="h-4 w-4 text-gray-500" />
-                </a>
+      {/* Panel de firma remota — siempre visible si no está firmado */}
+      {!rental.signedAt && (
+        <>
+          {/* ── Link activo ── */}
+          {rental.signToken && signUrl ? (
+            <div className="print:hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 bg-amber-100 dark:bg-amber-800/50 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Link2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                    Link de firma activo
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
+                    Envía este enlace al cliente para que firme el contrato desde cualquier dispositivo.
+                    El link se invalidará automáticamente una vez firmado.
+                  </p>
+                  {/* URL del link */}
+                  <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 mb-3">
+                    <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1 font-mono">
+                      {signUrl}
+                    </span>
+                    <button
+                      onClick={handleCopyLink}
+                      className="flex-shrink-0 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                      title="Copiar link"
+                    >
+                      {linkCopied
+                        ? <Check className="h-4 w-4 text-green-500" />
+                        : <Copy className="h-4 w-4 text-gray-500" />
+                      }
+                    </button>
+                    <a
+                      href={signUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                      title="Abrir en nueva pestaña"
+                    >
+                      <ExternalLink className="h-4 w-4 text-gray-500" />
+                    </a>
+                  </div>
+                  {/* Botones de acción */}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={handleCopyLink}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition font-medium"
+                    >
+                      {linkCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      {linkCopied ? "¡Copiado!" : "Copiar link"}
+                    </button>
+                    <button
+                      onClick={handleShareLinkWhatsApp}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition font-medium"
+                    >
+                      <Share2 className="h-3 w-3" />
+                      Enviar por WhatsApp
+                    </button>
+                    <button
+                      onClick={handleRevokeLink}
+                      disabled={revokingLink}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-white dark:bg-gray-800 border border-red-300 text-red-600 hover:bg-red-50 rounded-lg transition font-medium disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {revokingLink ? "Revocando..." : "Revocar link"}
+                    </button>
+                  </div>
+                </div>
               </div>
-              {/* Botones de acción del link */}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={handleCopyLink}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition font-medium"
-                >
-                  {linkCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  {linkCopied ? "¡Copiado!" : "Copiar link"}
-                </button>
-                <button
-                  onClick={handleShareLinkWhatsApp}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition font-medium"
-                >
-                  <Share2 className="h-3 w-3" />
-                  Enviar por WhatsApp
-                </button>
-                <button
-                  onClick={handleRevokeLink}
-                  disabled={revokingLink}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-white dark:bg-gray-800 border border-red-300 text-red-600 hover:bg-red-50 rounded-lg transition font-medium disabled:opacity-50"
-                >
-                  <Trash2 className="h-3 w-3" />
-                  Revocar link
-                </button>
+            </div>
+          ) : (
+            /* ── Sin link activo — panel para generar/regenerar ── */
+            <div className="print:hidden bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Link2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Firma remota por enlace
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    Genera un enlace de un solo uso para que el cliente firme el contrato
+                    desde su dispositivo. Válido por 48 horas.
+                  </p>
+                  <button
+                    onClick={handleGenerateLink}
+                    disabled={generatingLink}
+                    className="flex items-center gap-1.5 text-xs px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg transition font-medium"
+                  >
+                    {generatingLink
+                      ? <><Loader2 className="h-3 w-3 animate-spin" /> Generando...</>
+                      : <><Link2 className="h-3 w-3" /> Generar link de firma</>
+                    }
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       {/* Contract Document */}
