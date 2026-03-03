@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 export const ActivityActions = {
   RENTAL_CREATED: "RENTAL_CREATED",
@@ -23,7 +24,7 @@ export async function logActivity(
         rentalId,
         action,
         description,
-        metadata: metadata ?? undefined,
+        metadata: metadata !== undefined ? (metadata as Prisma.InputJsonValue) : undefined,
       },
     })
   } catch (error) {
