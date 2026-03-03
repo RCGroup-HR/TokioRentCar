@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useParams } from "next/navigation"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { SignaturePad } from "@/components/ui"
@@ -12,6 +12,9 @@ import {
   Loader2,
   FileText,
   MapPin,
+  Camera,
+  X,
+  IdCard,
 } from "lucide-react"
 
 interface RentalData {
@@ -46,6 +49,33 @@ function formatDate(dateStr: string) {
 }
 
 type PageState = "loading" | "ready" | "already_signed" | "invalid" | "expired" | "success" | "error"
+type DocType = "cedula" | "licencia"
+
+/** Comprime una imagen a JPEG ≤ 1200px, calidad 0.78 */
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = reject
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onerror = reject
+      img.onload = () => {
+        const MAX = 1200
+        let w = img.width
+        let h = img.height
+        if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX } }
+        else        { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX } }
+        const canvas = document.createElement("canvas")
+        canvas.width = w
+        canvas.height = h
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL("image/jpeg", 0.78))
+      }
+      img.src = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  })
+}
 
 export default function PublicSignPage() {
   const params = useParams()
@@ -61,6 +91,12 @@ export default function PublicSignPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
 
+  // ─── Documento de identidad ────────────────────────────────
+  const [docType, setDocType] = useState<DocType>("cedula")
+  const [docPhoto, setDocPhoto] = useState<string | null>(null)
+  const [processingPhoto, setProcessingPhoto] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     if (!token) return
     fetchContractData()
@@ -71,26 +107,10 @@ export default function PublicSignPage() {
       const res = await fetch(`/api/public/sign/${token}`)
       const data = await res.json()
 
-      if (res.status === 410 || data.expired) {
-        setPageState("expired")
-        return
-      }
-
-      if (!res.ok) {
-        setPageState("invalid")
-        return
-      }
-
-      if (data.alreadySigned) {
-        setSignedAt(data.signedAt)
-        setPageState("already_signed")
-        return
-      }
-
-      if (!data.rental) {
-        setPageState("invalid")
-        return
-      }
+      if (res.status === 410 || data.expired) { setPageState("expired"); return }
+      if (!res.ok) { setPageState("invalid"); return }
+      if (data.alreadySigned) { setSignedAt(data.signedAt); setPageState("already_signed"); return }
+      if (!data.rental) { setPageState("invalid"); return }
 
       setRental(data.rental)
       setPageState("ready")
@@ -105,9 +125,25 @@ export default function PublicSignPage() {
     setCustomerSignatureConfirmed(true)
   }, [])
 
+  const handleDocumentCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setProcessingPhoto(true)
+    try {
+      const compressed = await compressImage(file)
+      setDocPhoto(compressed)
+    } catch {
+      setSubmitError("Error al procesar la imagen. Intenta de nuevo.")
+    } finally {
+      setProcessingPhoto(false)
+      // Reset input so se puede seleccionar el mismo archivo de nuevo
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
   const handleSubmit = async () => {
     if (!customerSignature || !customerSignatureConfirmed) {
-      setSubmitError("Por favor firma el contrato antes de continuar.")
+      setSubmitError("Por favor dibuja tu firma antes de continuar.")
       return
     }
     setSubmitError("")
@@ -117,7 +153,11 @@ export default function PublicSignPage() {
       const res = await fetch(`/api/public/sign/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerSignature }),
+        body: JSON.stringify({
+          customerSignature,
+          documentPhotoUrl: docPhoto ?? undefined,
+          documentType: docPhoto ? docType : undefined,
+        }),
       })
       const data = await res.json()
 
@@ -127,7 +167,7 @@ export default function PublicSignPage() {
       } else {
         setSubmitError(data.error || "Error al guardar la firma. Por favor intenta de nuevo.")
       }
-    } catch (err) {
+    } catch {
       setSubmitError("Error de conexión. Por favor intenta de nuevo.")
     } finally {
       setSubmitting(false)
@@ -154,11 +194,9 @@ export default function PublicSignPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-md p-8 text-center">
-          {settings.logo ? (
-            <img src={settings.logo} alt={companyName} className="h-12 mx-auto mb-6 object-contain" />
-          ) : (
-            <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>{companyName}</h2>
-          )}
+          {settings.logo
+            ? <img src={settings.logo} alt={companyName} className="h-12 mx-auto mb-6 object-contain" />
+            : <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>{companyName}</h2>}
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="h-8 w-8 text-red-500" />
           </div>
@@ -177,11 +215,9 @@ export default function PublicSignPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-md p-8 text-center">
-          {settings.logo ? (
-            <img src={settings.logo} alt={companyName} className="h-12 mx-auto mb-6 object-contain" />
-          ) : (
-            <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>{companyName}</h2>
-          )}
+          {settings.logo
+            ? <img src={settings.logo} alt={companyName} className="h-12 mx-auto mb-6 object-contain" />
+            : <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>{companyName}</h2>}
           <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="h-8 w-8 text-orange-500" />
           </div>
@@ -199,11 +235,9 @@ export default function PublicSignPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-md p-8 text-center">
-          {settings.logo ? (
-            <img src={settings.logo} alt={companyName} className="h-12 mx-auto mb-6 object-contain" />
-          ) : (
-            <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>{companyName}</h2>
-          )}
+          {settings.logo
+            ? <img src={settings.logo} alt={companyName} className="h-12 mx-auto mb-6 object-contain" />
+            : <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>{companyName}</h2>}
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="h-8 w-8 text-green-500" />
           </div>
@@ -224,17 +258,16 @@ export default function PublicSignPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-md p-8 text-center">
-          {settings.logo ? (
-            <img src={settings.logo} alt={companyName} className="h-12 mx-auto mb-6 object-contain" />
-          ) : (
-            <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>{companyName}</h2>
-          )}
+          {settings.logo
+            ? <img src={settings.logo} alt={companyName} className="h-12 mx-auto mb-6 object-contain" />
+            : <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>{companyName}</h2>}
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="h-8 w-8 text-green-500" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 mb-2">¡Contrato firmado!</h3>
-          <p className="text-gray-600 text-sm mb-4">
-            Tu firma fue guardada exitosamente. El contrato ha quedado registrado.
+          <p className="text-gray-600 text-sm mb-2">
+            Tu firma{docPhoto ? " y documento de identidad fueron guardados" : " fue guardada"} exitosamente.
+            El contrato ha quedado registrado.
           </p>
           <p className="text-xs text-gray-400">
             Firmado el {signedAt ? new Date(signedAt).toLocaleString("es-DO") : new Date().toLocaleString("es-DO")}
@@ -253,14 +286,12 @@ export default function PublicSignPage() {
 
         {/* Header con logo */}
         <div className="bg-white rounded-2xl shadow-sm p-6 text-center">
-          {settings.logo ? (
-            <img src={settings.logo} alt={companyName} className="h-14 mx-auto mb-3 object-contain" />
-          ) : (
-            <h1 className="text-2xl font-bold mb-3" style={{ color: primaryColor }}>{companyName}</h1>
-          )}
+          {settings.logo
+            ? <img src={settings.logo} alt={companyName} className="h-14 mx-auto mb-3 object-contain" />
+            : <h1 className="text-2xl font-bold mb-3" style={{ color: primaryColor }}>{companyName}</h1>}
           <h2 className="text-lg font-semibold text-gray-800">Firma de Contrato</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Por favor revisa los detalles y firma el contrato a continuación
+            Por favor revisa los detalles, adjunta tu documento y firma el contrato
           </p>
         </div>
 
@@ -287,7 +318,7 @@ export default function PublicSignPage() {
             </div>
           </div>
 
-          {/* Fechas y ubicación */}
+          {/* Fechas */}
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="p-3 bg-gray-50 rounded-xl">
               <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
@@ -348,6 +379,104 @@ export default function PublicSignPage() {
           </div>
         )}
 
+        {/* ─── Documento de identidad (anexo) ─────────────────── */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <IdCard className="h-5 w-5" style={{ color: primaryColor }} />
+            <h3 className="font-bold text-gray-900">Documento de identidad</h3>
+            <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Anexo</span>
+          </div>
+          <p className="text-sm text-gray-500 mb-4">
+            Adjunta una foto de tu cédula, pasaporte o licencia de conducir.
+            Este documento quedará registrado como parte del contrato.
+          </p>
+
+          {/* Selector de tipo */}
+          <div className="flex gap-2 mb-4">
+            {([
+              { key: "cedula",   label: "🪪 Cédula / Pasaporte" },
+              { key: "licencia", label: "🚗 Licencia" },
+            ] as { key: DocType; label: string }[]).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setDocType(key)}
+                className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium border transition ${
+                  docType === key
+                    ? "border-current text-white"
+                    : "border-gray-200 text-gray-600 bg-white hover:bg-gray-50"
+                }`}
+                style={docType === key ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Preview o área de captura */}
+          {docPhoto ? (
+            <div className="relative rounded-xl overflow-hidden">
+              <img
+                src={docPhoto}
+                alt="Documento adjunto"
+                className="w-full max-h-52 object-cover rounded-xl border border-gray-200"
+              />
+              {/* Badge de tipo */}
+              <span className="absolute top-2 left-2 text-xs font-semibold text-white px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: primaryColor }}>
+                {docType === "cedula" ? "Cédula / Pasaporte" : "Licencia de Conducir"}
+              </span>
+              {/* Botón eliminar */}
+              <button
+                type="button"
+                onClick={() => setDocPhoto(null)}
+                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 transition shadow"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="mt-2 flex items-center gap-1.5 text-sm text-green-600">
+                <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                Documento adjunto correctamente.
+              </div>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center gap-3 p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-current transition-colors"
+              style={{ "--hover-color": primaryColor } as React.CSSProperties}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleDocumentCapture}
+                className="hidden"
+              />
+              {processingPhoto ? (
+                <>
+                  <Loader2 className="h-8 w-8 animate-spin" style={{ color: primaryColor }} />
+                  <span className="text-sm text-gray-500">Procesando imagen...</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: `${primaryColor}20` }}>
+                    <Camera className="h-7 w-7" style={{ color: primaryColor }} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-700">
+                      Tomar foto o seleccionar imagen
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {docType === "cedula"
+                        ? "Cédula de identidad o pasaporte"
+                        : "Licencia de conducir"}
+                    </p>
+                  </div>
+                </>
+              )}
+            </label>
+          )}
+        </div>
+
         {/* Firma del cliente */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <h3 className="font-bold text-gray-900 mb-1">Tu firma</h3>
@@ -367,7 +496,6 @@ export default function PublicSignPage() {
             autoSave
           />
 
-          {/* Indicador visual de firma capturada */}
           {customerSignature && (
             <div className="mt-3 flex items-center gap-2 text-sm text-green-600">
               <CheckCircle className="h-4 w-4 flex-shrink-0" />
@@ -391,7 +519,7 @@ export default function PublicSignPage() {
             {submitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Guardando firma...
+                Guardando...
               </>
             ) : (
               <>

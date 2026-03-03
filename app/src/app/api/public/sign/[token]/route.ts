@@ -113,14 +113,14 @@ export async function GET(
   }
 }
 
-// POST - Guarda la firma del cliente y anula el token
+// POST - Guarda la firma del cliente (+ foto de documento opcional) y anula el token
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { token } = await params
-    const { customerSignature } = await request.json()
+    const { customerSignature, documentPhotoUrl, documentType } = await request.json()
 
     if (!customerSignature) {
       return NextResponse.json({ error: "La firma del cliente es requerida" }, { status: 400 })
@@ -128,6 +128,11 @@ export async function POST(
 
     if (!customerSignature.startsWith("data:image/")) {
       return NextResponse.json({ error: "Formato de firma inválido" }, { status: 400 })
+    }
+
+    // Validar foto de documento si se envió
+    if (documentPhotoUrl && !documentPhotoUrl.startsWith("data:image/")) {
+      return NextResponse.json({ error: "Formato de imagen de documento inválido" }, { status: 400 })
     }
 
     const rental = await prisma.rental.findUnique({
@@ -159,21 +164,33 @@ export async function POST(
     const signedAt = new Date()
     const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "desconocida"
 
+    // Determinar en qué campo guardar la foto del documento
+    const docField = documentPhotoUrl
+      ? documentType === "licencia"
+        ? { licensePhotoUrl: documentPhotoUrl }
+        : { idPhotoUrl: documentPhotoUrl }
+      : {}
+
     await prisma.rental.update({
       where: { id: rental.id },
       data: {
         customerSignature,
         signedAt,
-        signToken: null,        // Invalida el token tras firmar
+        signToken: null,           // Invalida el token tras firmar
         signTokenExpiresAt: null,
+        ...docField,               // Foto de cédula/pasaporte o licencia (si se proporcionó)
       },
     })
+
+    const docNote = documentPhotoUrl
+      ? ` Se adjuntó foto de ${documentType === "licencia" ? "licencia de conducir" : "cédula/pasaporte"}.`
+      : ""
 
     await logActivity(
       rental.id,
       ActivityActions.SIGNED_REMOTE,
-      `Contrato #${rental.contractNumber} firmado por el cliente de forma remota (link de un solo uso).`,
-      { ip, signedAt: signedAt.toISOString() }
+      `Contrato #${rental.contractNumber} firmado por el cliente de forma remota (link de un solo uso).${docNote}`,
+      { ip, signedAt: signedAt.toISOString(), hasDocument: !!documentPhotoUrl, documentType: documentType ?? null }
     )
 
     return NextResponse.json({
