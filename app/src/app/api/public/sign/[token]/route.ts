@@ -54,6 +54,7 @@ export async function GET(
           select: {
             firstName: true,
             lastName: true,
+            signature: true,
           },
         },
       },
@@ -103,6 +104,7 @@ export async function GET(
         agentName: rental.agent
           ? `${rental.agent.firstName} ${rental.agent.lastName}`
           : "",
+        agentSignature: rental.agent?.signature || null,
       },
     })
   } catch (error) {

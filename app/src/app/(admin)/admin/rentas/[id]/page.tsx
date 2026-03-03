@@ -7,7 +7,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { formatCurrency } from "@/lib/utils"
-import { ArrowLeft, Printer, Download, Car, Calendar, User, FileText, PenTool, CheckCircle, Share2, Loader2, Link2, Copy, Check, Trash2, ExternalLink, Activity, PlusCircle, Edit3, RotateCcw } from "lucide-react"
+import { ArrowLeft, Printer, Download, Car, Calendar, User, FileText, PenTool, CheckCircle, Share2, Loader2, Link2, Copy, Check, Trash2, ExternalLink, Activity, PlusCircle, Edit3, RotateCcw, Camera, Upload, X, ZoomIn } from "lucide-react"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
 
@@ -73,6 +73,8 @@ interface Rental {
   agentSignature?: string | null
   signedAt?: string | null
   signToken?: string | null
+  idPhotoUrl?: string | null
+  licensePhotoUrl?: string | null
   rentalCustomers: {
     customer: Customer
   }[]
@@ -117,6 +119,9 @@ export default function RentalDetailPage() {
   const [revokingLink, setRevokingLink] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
+  const [uploadingId, setUploadingId] = useState(false)
+  const [uploadingLicense, setUploadingLicense] = useState(false)
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
   const contractRef = useRef<HTMLDivElement>(null)
 
   const signUrl = rental?.signToken
@@ -223,6 +228,56 @@ export default function RentalDetailPage() {
     const name = customer ? `${customer.firstName}` : "cliente"
     const message = `Hola ${name}, te enviamos el enlace para firmar tu contrato de alquiler #${rental.contractNumber}:\n\n${signUrl}\n\nPor favor firma a la brevedad posible.`
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
+  }
+
+  const handleDocumentUpload = async (
+    file: File,
+    field: "idPhotoUrl" | "licensePhotoUrl"
+  ) => {
+    if (!rental) return
+    const setter = field === "idPhotoUrl" ? setUploadingId : setUploadingLicense
+    setter(true)
+    try {
+      // 1. Upload the file
+      const form = new FormData()
+      form.append("file", file)
+      form.append("folder", "documents")
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: form })
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json()
+        alert(err.error || "Error al subir el archivo")
+        return
+      }
+      const { url } = await uploadRes.json()
+
+      // 2. Save URL to rental
+      const saveRes = await fetch(`/api/rentals/${rental.id}/documents`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: url }),
+      })
+      if (saveRes.ok) {
+        setRental((prev) => prev ? { ...prev, [field]: url } : prev)
+      } else {
+        alert("Error al guardar el documento")
+      }
+    } catch {
+      alert("Error de conexión")
+    } finally {
+      setter(false)
+    }
+  }
+
+  const handleRemoveDocument = async (field: "idPhotoUrl" | "licensePhotoUrl") => {
+    if (!rental || !confirm("¿Eliminar esta foto?")) return
+    const res = await fetch(`/api/rentals/${rental.id}/documents`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: null }),
+    })
+    if (res.ok) {
+      setRental((prev) => prev ? { ...prev, [field]: null } : prev)
+    }
   }
 
   const handlePrint = () => {
@@ -844,6 +899,134 @@ ${settings.companyName || 'Rent Car'}`
           </div>
         )}
       </div>
+
+      {/* Documentos del Cliente */}
+      <div className="print:hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 max-w-4xl mx-auto">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <Camera className="h-4 w-4 text-gray-500" />
+          Documentos del Cliente
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* ── Cédula / Pasaporte ── */}
+          {(["idPhotoUrl", "licensePhotoUrl"] as const).map((field) => {
+            const isId = field === "idPhotoUrl"
+            const label = isId ? "Cédula / Pasaporte" : "Licencia de Conducir"
+            const uploading = isId ? uploadingId : uploadingLicense
+            const photoUrl = isId ? rental.idPhotoUrl : rental.licensePhotoUrl
+
+            return (
+              <div key={field} className="space-y-2">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</p>
+
+                {photoUrl ? (
+                  /* Foto ya subida */
+                  <div className="relative group rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                    <img
+                      src={photoUrl}
+                      alt={label}
+                      className="w-full h-44 object-cover"
+                    />
+                    {/* Overlay actions */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => setLightboxSrc(photoUrl)}
+                        className="p-2 bg-white rounded-full text-gray-800 hover:bg-gray-100 transition"
+                        title="Ver en grande"
+                      >
+                        <ZoomIn className="h-4 w-4" />
+                      </button>
+                      <label
+                        className="p-2 bg-white rounded-full text-gray-800 hover:bg-gray-100 transition cursor-pointer"
+                        title="Cambiar foto"
+                      >
+                        <Upload className="h-4 w-4" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (f) handleDocumentUpload(f, field)
+                            e.target.value = ""
+                          }}
+                        />
+                      </label>
+                      <button
+                        onClick={() => handleRemoveDocument(field)}
+                        className="p-2 bg-red-500 rounded-full text-white hover:bg-red-600 transition"
+                        title="Eliminar"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Sin foto — área de subida */
+                  <label className={`flex flex-col items-center justify-center gap-3 h-44 rounded-xl border-2 border-dashed cursor-pointer transition
+                    ${uploading
+                      ? "border-amber-300 bg-amber-50 dark:bg-amber-900/10"
+                      : "border-gray-300 dark:border-gray-600 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/10"
+                    }`}
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+                        <p className="text-sm text-amber-600 dark:text-amber-400">Subiendo...</p>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="h-8 w-8 text-gray-400" />
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                            Tomar foto o subir archivo
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                            JPG, PNG hasta 5MB
+                          </p>
+                        </div>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0]
+                        if (f) handleDocumentUpload(f, field)
+                        e.target.value = ""
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Lightbox */}
+      {lightboxSrc && (
+        <div
+          className="print:hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <button
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition"
+            onClick={() => setLightboxSrc(null)}
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <img
+            src={lightboxSrc}
+            alt="Documento"
+            className="max-w-full max-h-full rounded-xl shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* Activity Timeline */}
       {activityLogs.length > 0 && (

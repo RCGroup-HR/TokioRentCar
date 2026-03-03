@@ -26,6 +26,7 @@ interface RentalData {
   pickupLocation: string
   customerName: string
   agentName: string
+  agentSignature: string | null
   vehicle: {
     brand: string
     model: string
@@ -331,6 +332,21 @@ export default function PublicSignPage() {
             </div>
           </div>
         </div>
+
+        {/* Firma del agente (pre-firmado) */}
+        {rental.agentSignature && (
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h3 className="font-bold text-gray-900 mb-3">Firma del Agente / Empresa</h3>
+            <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 flex flex-col items-center">
+              <img
+                src={rental.agentSignature}
+                alt="Firma del agente"
+                className="h-20 object-contain"
+              />
+              <p className="text-xs text-gray-500 mt-2">{rental.agentName}</p>
+            </div>
+          </div>
+        )}
 
         {/* Firma del cliente */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
