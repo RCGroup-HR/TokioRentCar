@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Clock,
   CheckCircle,
+  PenTool,
 } from "lucide-react"
 import { formatDateShort, getStatusLabel, getStatusColor } from "@/lib/utils"
 
@@ -25,6 +26,7 @@ interface DashboardStats {
   pendingReservations: number
   monthlyRevenue: number
   monthlyExpenses: number
+  pendingSignatures: number
 }
 
 interface RecentActivity {
@@ -68,10 +70,20 @@ export default function AdminDashboardPage() {
       ).length || 0
 
       // Fetch rentals
-      const rentalsRes = await fetch("/api/rentals?limit=5")
+      const [rentalsRes, allRentalsRes] = await Promise.all([
+        fetch("/api/rentals?limit=5"),
+        fetch("/api/rentals?limit=200&status=ACTIVE"),
+      ])
       const rentalsData = await rentalsRes.json()
+      const allRentalsData = await allRentalsRes.json()
+
       const activeRentals = rentalsData.rentals?.filter(
         (r: any) => r.status === "ACTIVE"
+      ).length || 0
+
+      // Contratos activos con firma pendiente (tienen token pero no están firmados)
+      const pendingSignatures = allRentalsData.rentals?.filter(
+        (r: any) => r.signToken && !r.signedAt
       ).length || 0
 
       // Calculate monthly revenue from completed rentals
@@ -91,6 +103,7 @@ export default function AdminDashboardPage() {
         pendingReservations,
         monthlyRevenue,
         monthlyExpenses,
+        pendingSignatures,
       })
 
       setRecentReservations(reservationsData.reservations || [])
@@ -142,6 +155,15 @@ export default function AdminDashboardPage() {
       icon: DollarSign,
       color: "#10B981",
       href: "/admin/reportes",
+    },
+    {
+      title: language === "en" ? "Pending Signatures" : "Firmas Pendientes",
+      value: stats?.pendingSignatures || 0,
+      subtext: language === "en" ? "Awaiting client signature" : "Esperando firma del cliente",
+      icon: PenTool,
+      color: "#F59E0B",
+      href: "/admin/rentas",
+      alert: (stats?.pendingSignatures || 0) > 0,
     },
   ]
 

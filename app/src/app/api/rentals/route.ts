@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { generateContractNumber, calculateDaysBetween } from "@/lib/utils"
 import { sendRentalNotification } from "@/lib/email"
+import { logActivity, ActivityActions } from "@/lib/activityLog"
 
 export async function GET(request: NextRequest) {
   try {
@@ -356,6 +357,14 @@ export async function POST(request: Request) {
         console.error("Error sending rental notification:", error)
       })
     }
+
+    // Log de actividad (async, no bloquea respuesta)
+    logActivity(
+      rental.id,
+      ActivityActions.RENTAL_CREATED,
+      `Contrato #${rental.contractNumber} creado por ${session.user.name || session.user.email}.`,
+      { createdBy: session.user.email }
+    ).catch(() => {})
 
     return NextResponse.json(rental, { status: 201 })
   } catch (error) {

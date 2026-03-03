@@ -50,6 +50,8 @@ interface Rental {
     images: { url: string; isPrimary: boolean }[]
   }
   payments: { id: string; amount: number; status: string }[]
+  signedAt?: string | null
+  signToken?: string | null
 }
 
 const statusLabels: Record<string, string> = {
@@ -439,13 +441,26 @@ export default function RentasPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              statusColors[rental.status]
-                            }`}
-                          >
-                            {statusLabels[rental.status]}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${
+                                statusColors[rental.status]
+                              }`}
+                            >
+                              {statusLabels[rental.status]}
+                            </span>
+                            {rental.signToken && !rental.signedAt && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400 w-fit flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse inline-block" />
+                                Firma pendiente
+                              </span>
+                            )}
+                            {rental.signedAt && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400 w-fit">
+                                ✓ Firmado
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1">

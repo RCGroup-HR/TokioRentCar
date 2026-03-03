@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession, signOut } from "next-auth/react"
 import { useSettingsStore } from "@/stores/settingsStore"
+import { useThemeStore } from "@/stores/themeStore"
 import { Button } from "@/components/ui"
 import {
   Menu,
@@ -17,12 +18,18 @@ import {
   Settings,
   Bike,
   Building2,
+  Sun,
+  Moon,
 } from "lucide-react"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { data: session } = useSession()
   const { settings } = useSettingsStore()
+  const { theme, setTheme, resolvedTheme } = useThemeStore()
+
+  useEffect(() => { setMounted(true) }, [])
 
   const isAdmin = session?.user?.role && ["SUPER_ADMIN", "ADMIN", "AGENT"].includes(session.user.role)
 
@@ -170,6 +177,19 @@ export function Header() {
                 </Button>
               </Link>
             )}
+            {/* Toggle dark mode */}
+            {mounted && (
+              <button
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                title={resolvedTheme === "dark" ? "Modo claro" : "Modo oscuro"}
+              >
+                {resolvedTheme === "dark"
+                  ? <Sun className="h-4 w-4 text-amber-500" />
+                  : <Moon className="h-4 w-4 text-gray-500" />
+                }
+              </button>
+            )}
             <Link href="/vehiculos">
               <Button leftIcon={<Car className="h-4 w-4" />}>Reservar Ahora</Button>
             </Link>
@@ -238,6 +258,18 @@ export function Header() {
             >
               Contacto
             </Link>
+            {/* Dark mode toggle en móvil */}
+            {mounted && (
+              <button
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                className="flex items-center gap-2 py-2 text-gray-700 hover:text-primary transition w-full"
+              >
+                {resolvedTheme === "dark"
+                  ? <><Sun className="h-4 w-4 text-amber-500" /> Modo claro</>
+                  : <><Moon className="h-4 w-4" /> Modo oscuro</>
+                }
+              </button>
+            )}
             <div className="pt-4 border-t space-y-2">
               {session ? (
                 <>

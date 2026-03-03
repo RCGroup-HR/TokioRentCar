@@ -7,7 +7,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { formatCurrency } from "@/lib/utils"
-import { ArrowLeft, Car, User, Calendar, Save, Search, Plus, X, Check, UserCog } from "lucide-react"
+import { ArrowLeft, Car, User, Calendar, Save, Search, Plus, X, Check, UserCog, Share2, Link2, CheckCircle, FileText } from "lucide-react"
 import { useSession } from "next-auth/react"
 
 interface Vehicle {
@@ -56,6 +56,9 @@ export default function NuevaRentaPage() {
   const { data: session } = useSession()
   const { settings } = useSettingsStore()
   const [loading, setLoading] = useState(false)
+  const [createdRental, setCreatedRental] = useState<{ id: string; contractNumber: string } | null>(null)
+  const [generatingLink, setGeneratingLink] = useState(false)
+  const [signUrl, setSignUrl] = useState<string | null>(null)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [locations, setLocations] = useState<Location[]>([])
@@ -287,7 +290,7 @@ export default function NuevaRentaPage() {
 
       if (res.ok) {
         const rental = await res.json()
-        router.push(`/admin/rentas/${rental.id}`)
+        setCreatedRental({ id: rental.id, contractNumber: rental.contractNumber })
       } else {
         const error = await res.json()
         alert(error.error || "Error al crear renta")
@@ -300,6 +303,54 @@ export default function NuevaRentaPage() {
     }
   }
 
+  const handleGenerateAndShareLink = async () => {
+    if (!createdRental) return
+    setGeneratingLink(true)
+    try {
+      const res = await fetch(`/api/rentals/${createdRental.id}/sign-token`, { method: "POST" })
+      const data = await res.json()
+      if (res.ok) {
+        setSignUrl(data.signUrl)
+        const message = `Hola, te enviamos el enlace para firmar tu contrato de alquiler #${createdRental.contractNumber}:\n\n${data.signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
+        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
+      } else {
+        alert(data.error || "Error al generar el link")
+      }
+    } catch {
+      alert("Error de conexión")
+    } finally {
+      setGeneratingLink(false)
+    }
+  }
+
+  const resetForm = () => {
+    setCreatedRental(null)
+    setSignUrl(null)
+    setSelectedVehicle(null)
+    setSelectedCustomer(null)
+    setSelectedAgentId(session?.user?.id || "")
+    setFormData({
+      customerId: "",
+      vehicleId: "",
+      reservationId: "",
+      startDate: new Date().toISOString().split("T")[0],
+      startTime: "10:00",
+      expectedEndDate: "",
+      expectedEndTime: "10:00",
+      dailyRate: 0,
+      depositAmount: 0,
+      startMileage: 0,
+      pickupLocation: "",
+      pickupCondition: "EXCELLENT",
+      fuelLevelStart: "FULL",
+      licenseNumber: "",
+      licenseExpiry: "",
+      idNumber: "",
+      idType: "CEDULA",
+      notes: "",
+    })
+  }
+
   const primaryImage = selectedVehicle?.images.find((img) => img.isPrimary) ||
     selectedVehicle?.images[0]
 
@@ -308,6 +359,112 @@ export default function NuevaRentaPage() {
     PASSPORT: "Pasaporte",
     LICENSE: "Licencia",
   }
+
+  // ── Success screen ──────────────────────────────────────────────
+  if (createdRental) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/rentas">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nueva Renta</h1>
+            <p className="text-gray-500 dark:text-gray-400">Contrato creado exitosamente</p>
+          </div>
+        </div>
+
+        <div className="max-w-lg mx-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 text-center space-y-6">
+            {/* Icon */}
+            <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle className="h-10 w-10 text-green-600" />
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">¡Contrato creado!</h2>
+              <p className="text-gray-500 dark:text-gray-400 mt-1">
+                Contrato{" "}
+                <span className="font-semibold text-gray-700 dark:text-gray-300">
+                  #{createdRental.contractNumber}
+                </span>{" "}
+                registrado correctamente.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Ver contrato */}
+              <Link href={`/admin/rentas/${createdRental.id}`} className="block">
+                <Button className="w-full" leftIcon={<FileText className="h-4 w-4" />}>
+                  Ver contrato
+                </Button>
+              </Link>
+
+              {/* Link de firma generado */}
+              {signUrl ? (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 text-left">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Link2 className="h-4 w-4 text-amber-600" />
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                      Link de firma generado
+                    </p>
+                  </div>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 font-mono break-all mb-3 bg-white dark:bg-gray-800 rounded p-2 border border-amber-200 dark:border-amber-700">
+                    {signUrl}
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => navigator.clipboard.writeText(signUrl)}
+                      className="flex items-center gap-1 text-xs px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition"
+                    >
+                      <Check className="h-3 w-3" />
+                      Copiar link
+                    </button>
+                    <button
+                      onClick={() => {
+                        const msg = `Hola, aquí está el enlace para firmar tu contrato #${createdRental.contractNumber}:\n\n${signUrl}`
+                        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
+                      }}
+                      className="flex items-center gap-1 text-xs px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition"
+                    >
+                      <Share2 className="h-3 w-3" />
+                      Reenviar WhatsApp
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Generar link y enviar WhatsApp */
+                <Button
+                  variant="outline"
+                  className="w-full border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+                  leftIcon={
+                    generatingLink
+                      ? <div className="loader-sm" />
+                      : <Share2 className="h-4 w-4" />
+                  }
+                  onClick={handleGenerateAndShareLink}
+                  disabled={generatingLink}
+                >
+                  {generatingLink ? "Generando link..." : "Generar link y enviar por WhatsApp"}
+                </Button>
+              )}
+
+              {/* Crear otra renta */}
+              <button
+                onClick={resetForm}
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition underline"
+              >
+                + Crear otra renta
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  // ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">

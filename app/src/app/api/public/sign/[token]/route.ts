@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
+import { logActivity, ActivityActions } from "@/lib/activityLog"
 
-// GET - Obtiene los datos del contrato usando el token (sin autenticación)
+// GET - Obtiene datos del contrato por token (sin autenticación)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -22,6 +23,7 @@ export async function GET(
         depositAmount: true,
         pickupLocation: true,
         signedAt: true,
+        signTokenExpiresAt: true,
         vehicle: {
           select: {
             brand: true,
@@ -65,7 +67,7 @@ export async function GET(
       )
     }
 
-    // Si ya está firmado, retornar estado pero sin datos de firma
+    // Verificar si el contrato ya fue firmado
     if (rental.signedAt) {
       return NextResponse.json({
         alreadySigned: true,
@@ -74,8 +76,17 @@ export async function GET(
       })
     }
 
+    // Verificar si el token expiró
+    if (rental.signTokenExpiresAt && new Date() > new Date(rental.signTokenExpiresAt)) {
+      return NextResponse.json(
+        { error: "Este enlace de firma ha expirado. Solicita un nuevo enlace a la empresa.", expired: true },
+        { status: 410 }
+      )
+    }
+
     return NextResponse.json({
       alreadySigned: false,
+      expiresAt: rental.signTokenExpiresAt,
       rental: {
         id: rental.id,
         contractNumber: rental.contractNumber,
@@ -102,7 +113,7 @@ export async function GET(
   }
 }
 
-// POST - Guarda la firma del cliente usando el token (sin autenticación)
+// POST - Guarda la firma del cliente y anula el token
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -119,10 +130,9 @@ export async function POST(
       return NextResponse.json({ error: "Formato de firma inválido" }, { status: 400 })
     }
 
-    // Buscar la renta por token
     const rental = await prisma.rental.findUnique({
       where: { signToken: token },
-      select: { id: true, signedAt: true, agentSignature: true },
+      select: { id: true, signedAt: true, signTokenExpiresAt: true, contractNumber: true },
     })
 
     if (!rental) {
@@ -139,21 +149,36 @@ export async function POST(
       )
     }
 
-    // Determinar si se completa el proceso de firma
-    const willBeSigned = !!rental.agentSignature || true // Siempre marcar como firmado al recibir firma del cliente
+    if (rental.signTokenExpiresAt && new Date() > new Date(rental.signTokenExpiresAt)) {
+      return NextResponse.json(
+        { error: "Este enlace ha expirado. Solicita un nuevo enlace a la empresa.", expired: true },
+        { status: 410 }
+      )
+    }
+
+    const signedAt = new Date()
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "desconocida"
 
     await prisma.rental.update({
       where: { id: rental.id },
       data: {
         customerSignature,
-        signedAt: new Date(),
-        signToken: null, // Invalida el token después de firmar
+        signedAt,
+        signToken: null,        // Invalida el token tras firmar
+        signTokenExpiresAt: null,
       },
     })
 
+    await logActivity(
+      rental.id,
+      ActivityActions.SIGNED_REMOTE,
+      `Contrato #${rental.contractNumber} firmado por el cliente de forma remota (link de un solo uso).`,
+      { ip, signedAt: signedAt.toISOString() }
+    )
+
     return NextResponse.json({
       message: "Contrato firmado exitosamente",
-      signedAt: new Date().toISOString(),
+      signedAt: signedAt.toISOString(),
     })
   } catch (error) {
     console.error("Error saving signature via token:", error)

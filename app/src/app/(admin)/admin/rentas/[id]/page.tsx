@@ -7,7 +7,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { formatCurrency } from "@/lib/utils"
-import { ArrowLeft, Printer, Download, Car, Calendar, User, FileText, PenTool, CheckCircle, Share2, Loader2, Link2, Copy, Check, Trash2, ExternalLink } from "lucide-react"
+import { ArrowLeft, Printer, Download, Car, Calendar, User, FileText, PenTool, CheckCircle, Share2, Loader2, Link2, Copy, Check, Trash2, ExternalLink, Activity, PlusCircle, Edit3, RotateCcw } from "lucide-react"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
 
@@ -84,6 +84,14 @@ interface Rental {
   vehicle: Vehicle
 }
 
+interface ActivityLog {
+  id: string
+  action: string
+  description: string
+  metadata?: Record<string, any>
+  createdAt: string
+}
+
 // Checklist items for the contract
 const checklistItems = [
   "AIRE ACONDICIONADO", "DOCUMENTO", "ANTENA",
@@ -108,6 +116,7 @@ export default function RentalDetailPage() {
   const [generatingLink, setGeneratingLink] = useState(false)
   const [revokingLink, setRevokingLink] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const contractRef = useRef<HTMLDivElement>(null)
 
   const signUrl = rental?.signToken
@@ -131,18 +140,35 @@ export default function RentalDetailPage() {
 
   const fetchRental = async () => {
     try {
-      const res = await fetch(`/api/rentals/${params.id}`)
-      if (res.ok) {
-        const data = await res.json()
+      const [rentalRes, activityRes] = await Promise.all([
+        fetch(`/api/rentals/${params.id}`),
+        fetch(`/api/rentals/${params.id}/activity`),
+      ])
+      if (rentalRes.ok) {
+        const data = await rentalRes.json()
         setRental(data)
       } else {
         router.push("/admin/rentas")
+      }
+      if (activityRes.ok) {
+        const actData = await activityRes.json()
+        setActivityLogs(actData.logs || [])
       }
     } catch (error) {
       console.error("Error fetching rental:", error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const refreshActivity = async () => {
+    try {
+      const res = await fetch(`/api/rentals/${params.id}/activity`)
+      if (res.ok) {
+        const data = await res.json()
+        setActivityLogs(data.logs || [])
+      }
+    } catch {}
   }
 
   const handleGenerateLink = async () => {
@@ -153,6 +179,7 @@ export default function RentalDetailPage() {
       const data = await res.json()
       if (res.ok) {
         setRental((prev) => prev ? { ...prev, signToken: data.signToken } : prev)
+        refreshActivity()
       } else {
         alert(data.error || "Error al generar el link")
       }
@@ -170,6 +197,7 @@ export default function RentalDetailPage() {
       const res = await fetch(`/api/rentals/${rental.id}/sign-token`, { method: "DELETE" })
       if (res.ok) {
         setRental((prev) => prev ? { ...prev, signToken: null } : prev)
+        refreshActivity()
       } else {
         const data = await res.json()
         alert(data.error || "Error al revocar el link")
@@ -816,6 +844,49 @@ ${settings.companyName || 'Rent Car'}`
           </div>
         )}
       </div>
+
+      {/* Activity Timeline */}
+      {activityLogs.length > 0 && (
+        <div className="print:hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 max-w-4xl mx-auto">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Activity className="h-4 w-4 text-gray-500" />
+            Historial de actividad
+          </h3>
+          <div className="relative">
+            {/* Vertical line */}
+            <div className="absolute left-4 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
+            <div className="space-y-4">
+              {activityLogs.map((log) => {
+                const iconMap: Record<string, { icon: React.ReactNode; color: string }> = {
+                  RENTAL_CREATED:    { icon: <PlusCircle className="h-3.5 w-3.5" />, color: "bg-blue-500" },
+                  SIGNED_PRESENTIAL: { icon: <PenTool className="h-3.5 w-3.5" />,    color: "bg-green-500" },
+                  SIGNED_REMOTE:     { icon: <CheckCircle className="h-3.5 w-3.5" />,color: "bg-green-500" },
+                  LINK_GENERATED:    { icon: <Link2 className="h-3.5 w-3.5" />,       color: "bg-amber-500" },
+                  LINK_REVOKED:      { icon: <Trash2 className="h-3.5 w-3.5" />,      color: "bg-red-500" },
+                  STATUS_CHANGED:    { icon: <RotateCcw className="h-3.5 w-3.5" />,   color: "bg-purple-500" },
+                }
+                const entry = iconMap[log.action] ?? { icon: <Edit3 className="h-3.5 w-3.5" />, color: "bg-gray-500" }
+                return (
+                  <div key={log.id} className="flex items-start gap-4 pl-0">
+                    <div className={`relative z-10 w-8 h-8 rounded-full ${entry.color} flex items-center justify-center text-white flex-shrink-0`}>
+                      {entry.icon}
+                    </div>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        {new Date(log.createdAt).toLocaleString("es-DO", {
+                          day: "2-digit", month: "2-digit", year: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Print Styles */}
       <style jsx global>{`

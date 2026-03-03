@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
+import { logActivity, ActivityActions } from "@/lib/activityLog"
 
 export async function POST(
   request: NextRequest,
@@ -81,6 +82,10 @@ export async function POST(
         signedAt: true,
       },
     })
+
+    if (updatedRental.signedAt) {
+      await logActivity(id, ActivityActions.SIGNED_PRESENTIAL, `Contrato #${updatedRental.contractNumber} firmado de forma presencial.`)
+    }
 
     return NextResponse.json({
       message: "Firma(s) guardada(s) exitosamente",

@@ -402,6 +402,7 @@ model Rental {
   agentSignature    String?    @db.LongText  // Base64 de la firma del agente
   signedAt          DateTime?                // Fecha/hora de firma del contrato
   signToken         String?    @unique       // Token único para enviar link de firma al cliente
+  signTokenExpiresAt DateTime?              // Expiración del token (48h por defecto)
 
   // Pagos
   payments        Payment[]
@@ -414,6 +415,9 @@ model Rental {
 
   // Relación con Customer (nuevo modelo)
   rentalCustomers RentalCustomer[]
+
+  // Logs de actividad
+  activityLogs    ActivityLog[]
 
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -436,6 +440,22 @@ enum RentalStatus {
   EXTENDED
   CANCELLED
   OVERDUE
+}
+
+// ==================== LOGS DE ACTIVIDAD ====================
+model ActivityLog {
+  id          String   @id @default(uuid())
+  rentalId    String
+  rental      Rental   @relation(fields: [rentalId], references: [id])
+
+  action      String   // RENTAL_CREATED | SIGNED_PRESENTIAL | SIGNED_REMOTE | LINK_GENERATED | LINK_REVOKED | STATUS_CHANGED
+  description String   @db.Text
+  metadata    Json?    // Info extra: IP, nombre del agente, etc.
+
+  createdAt   DateTime @default(now())
+
+  @@index([rentalId])
+  @@index([createdAt])
 }
 
 // ==================== PAGOS ====================

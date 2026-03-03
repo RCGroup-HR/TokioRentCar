@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { randomUUID } from "crypto"
+import { logActivity, ActivityActions } from "@/lib/activityLog"
 
-// POST - Genera un token único de firma y retorna la URL
+const TOKEN_EXPIRY_HOURS = 48
+
+// POST - Genera un token único de firma con expiración de 48h
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -32,22 +35,28 @@ export async function POST(
       )
     }
 
-    // Generar token único
     const signToken = randomUUID()
+    const signTokenExpiresAt = new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000)
 
     const updated = await prisma.rental.update({
       where: { id },
-      data: { signToken },
-      select: { signToken: true, contractNumber: true },
+      data: { signToken, signTokenExpiresAt },
+      select: { signToken: true, signTokenExpiresAt: true, contractNumber: true },
     })
 
-    // Construir URL del sitio
     const baseUrl = process.env.NEXTAUTH_URL || `https://${request.headers.get("host")}`
     const signUrl = `${baseUrl}/firmar/${updated.signToken}`
 
+    await logActivity(id, ActivityActions.LINK_GENERATED, `Link de firma generado por ${session.user.name || session.user.email}. Expira en ${TOKEN_EXPIRY_HOURS}h.`, {
+      generatedBy: session.user.email,
+      expiresAt: signTokenExpiresAt.toISOString(),
+    })
+
     return NextResponse.json({
       signToken: updated.signToken,
+      signTokenExpiresAt: updated.signTokenExpiresAt,
       signUrl,
+      expiresInHours: TOKEN_EXPIRY_HOURS,
       message: "Link de firma generado exitosamente",
     })
   } catch (error) {
@@ -56,7 +65,7 @@ export async function POST(
   }
 }
 
-// DELETE - Revoca el token de firma (lo elimina)
+// DELETE - Revoca el token de firma
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -80,7 +89,11 @@ export async function DELETE(
 
     await prisma.rental.update({
       where: { id },
-      data: { signToken: null },
+      data: { signToken: null, signTokenExpiresAt: null },
+    })
+
+    await logActivity(id, ActivityActions.LINK_REVOKED, `Link de firma revocado por ${session.user.name || session.user.email}.`, {
+      revokedBy: session.user.email,
     })
 
     return NextResponse.json({ message: "Link de firma revocado exitosamente" })
