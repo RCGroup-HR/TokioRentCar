@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { useSettingsStore } from "@/stores/settingsStore"
-import { SearchForm, VehicleCard } from "@/components/public"
+import { SearchForm, VehicleCard, ApartmentCard } from "@/components/public"
 import { Button } from "@/components/ui"
 import {
   Car,
   Shield,
   Clock,
   MapPin,
-  Star,
   ChevronRight,
   CheckCircle,
+  Bike,
+  Building2,
 } from "lucide-react"
 
 interface Vehicle {
@@ -32,19 +32,53 @@ interface Vehicle {
   status: string
 }
 
+interface Apartment {
+  id: string
+  name: string
+  city: string
+  rooms: number
+  bathrooms: number
+  maxGuests: number
+  category: string
+  pricePerNight: number
+  images: { id: string; url: string; isPrimary: boolean }[]
+  isFeatured: boolean
+  status: string
+}
+
 export default function HomePage() {
   const { settings } = useSettingsStore()
   const [featuredVehicles, setFeaturedVehicles] = useState<Vehicle[]>([])
+  const [featuredMotores, setFeaturedMotores] = useState<Vehicle[]>([])
+  const [featuredApartments, setFeaturedApartments] = useState<Apartment[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/vehicles?featured=true&available=true&limit=6")
-      .then((res) => res.json())
-      .then((data) => {
-        setFeaturedVehicles(data.vehicles || [])
+    const fetchAll = async () => {
+      try {
+        const [vehiclesRes, motoresRes, apartmentsRes] = await Promise.all([
+          fetch("/api/vehicles?featured=true&available=true&limit=6&vehicleType=CAR"),
+          fetch("/api/vehicles?featured=true&available=true&limit=3&vehicleType=MOTOR"),
+          fetch("/api/apartments?featured=true&available=true&limit=3"),
+        ])
+
+        const [vehiclesData, motoresData, apartmentsData] = await Promise.all([
+          vehiclesRes.json(),
+          motoresRes.json(),
+          apartmentsRes.json(),
+        ])
+
+        setFeaturedVehicles(vehiclesData.vehicles || [])
+        setFeaturedMotores(motoresData.vehicles || [])
+        setFeaturedApartments(apartmentsData.apartments || [])
+      } catch (error) {
+        console.error("Error fetching homepage data:", error)
+      } finally {
         setLoading(false)
-      })
-      .catch(() => setLoading(false))
+      }
+    }
+
+    fetchAll()
   }, [])
 
   const features = [
@@ -115,15 +149,94 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Categories Quick Access */}
+      <section className="py-10 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Vehículos */}
+            <Link href="/vehiculos">
+              <div
+                className="flex items-center gap-4 p-5 rounded-xl border-2 hover:shadow-md transition-all group"
+                style={{ borderColor: `${settings.primaryColor}40` }}
+              >
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: `${settings.primaryColor}20` }}
+                >
+                  <Car className="h-7 w-7" style={{ color: settings.primaryColor }} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:underline">
+                    Vehículos
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Carros y SUVs para alquilar
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 ml-auto group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Motores */}
+            <Link href="/motores">
+              <div
+                className="flex items-center gap-4 p-5 rounded-xl border-2 hover:shadow-md transition-all group"
+                style={{ borderColor: `${settings.primaryColor}40` }}
+              >
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: `${settings.primaryColor}20` }}
+                >
+                  <Bike className="h-7 w-7" style={{ color: settings.primaryColor }} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:underline">
+                    Motores
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Motocicletas para alquilar
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 ml-auto group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Departamentos */}
+            <Link href="/departamentos">
+              <div
+                className="flex items-center gap-4 p-5 rounded-xl border-2 hover:shadow-md transition-all group"
+                style={{ borderColor: `${settings.primaryColor}40` }}
+              >
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: `${settings.primaryColor}20` }}
+                >
+                  <Building2 className="h-7 w-7" style={{ color: settings.primaryColor }} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:underline">
+                    Departamentos
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Propiedades en alquiler
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 ml-auto group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-gray-50 dark:bg-gray-800">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
               ¿Por qué elegirnos?
             </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Ofrecemos el mejor servicio de renta de vehículos con los precios más competitivos
+            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Ofrecemos el mejor servicio de renta con los precios más competitivos
             </p>
           </div>
 
@@ -131,7 +244,7 @@ export default function HomePage() {
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition text-center"
+                className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-sm hover:shadow-md transition text-center"
               >
                 <div
                   className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
@@ -142,10 +255,10 @@ export default function HomePage() {
                     style={{ color: settings.primaryColor }}
                   />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600 text-sm">{feature.description}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -160,8 +273,8 @@ export default function HomePage() {
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 Vehículos Destacados
               </h2>
-              <p className="text-gray-600 dark:text-gray-300">
-                Nuestros vehículos más populares
+              <p className="text-gray-600 dark:text-gray-400">
+                Nuestros carros más populares
               </p>
             </div>
             <Link href="/vehiculos">
@@ -190,17 +303,85 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Featured Motores Section */}
+      {(loading || featuredMotores.length > 0) && (
+        <section className="py-16 bg-gray-50 dark:bg-gray-800">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                  Motores Destacados
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Nuestras motocicletas más populares
+                </p>
+              </div>
+              <Link href="/motores">
+                <Button variant="outline" rightIcon={<ChevronRight className="h-4 w-4" />}>
+                  Ver Todos
+                </Button>
+              </Link>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="loader" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {featuredMotores.map((vehicle) => (
+                  <VehicleCard key={vehicle.id} vehicle={vehicle} basePath="/motores" />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Featured Apartments Section */}
+      {(loading || featuredApartments.length > 0) && (
+        <section className="py-16 bg-white dark:bg-gray-900">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                  Departamentos Destacados
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Propiedades seleccionadas para ti
+                </p>
+              </div>
+              <Link href="/departamentos">
+                <Button variant="outline" rightIcon={<ChevronRight className="h-4 w-4" />}>
+                  Ver Todos
+                </Button>
+              </Link>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="loader" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {featuredApartments.map((apartment) => (
+                  <ApartmentCard key={apartment.id} apartment={apartment} />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* How it Works Section */}
-      <section
-        className="py-16 bg-amber-50 dark:bg-gray-800"
-      >
+      <section className="py-16 bg-amber-50 dark:bg-gray-800">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
               ¿Cómo Funciona?
             </h2>
-            <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Rentar un vehículo nunca fue tan fácil
+            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Rentar nunca fue tan fácil
             </p>
           </div>
 
@@ -208,8 +389,8 @@ export default function HomePage() {
             {[
               {
                 step: "1",
-                title: "Elige tu Vehículo",
-                description: "Explora nuestra flota y selecciona el vehículo ideal para ti",
+                title: "Elige lo que necesitas",
+                description: "Explora vehículos, motores o departamentos y selecciona el ideal para ti",
               },
               {
                 step: "2",
@@ -219,7 +400,7 @@ export default function HomePage() {
               {
                 step: "3",
                 title: "Recoge y Disfruta",
-                description: "Recoge tu vehículo en la ubicación elegida y comienza tu viaje",
+                description: "Recoge tu vehículo o accede a tu departamento y comienza tu experiencia",
               },
             ].map((item, index) => (
               <div key={index} className="text-center">
@@ -232,7 +413,7 @@ export default function HomePage() {
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                   {item.title}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300">{item.description}</p>
+                <p className="text-gray-600 dark:text-gray-400">{item.description}</p>
               </div>
             ))}
           </div>
@@ -249,21 +430,32 @@ export default function HomePage() {
             ¿Listo para tu próxima aventura?
           </h2>
           <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
-            Reserva ahora y obtén las mejores tarifas. Contamos con una amplia flota de vehículos para todas tus necesidades.
+            Reserva ahora y obtén las mejores tarifas. Contamos con vehículos, motores y departamentos para todas tus necesidades.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link href="/vehiculos">
               <Button size="lg" rightIcon={<Car className="h-5 w-5" />}>
-                Reservar Ahora
+                Ver Vehículos
               </Button>
             </Link>
-            <Link href="/contacto">
+            <Link href="/motores">
               <Button
-                variant="outline"
                 size="lg"
+                rightIcon={<Bike className="h-5 w-5" />}
+                variant="outline"
                 className="bg-transparent border-white text-white hover:bg-white hover:text-gray-900"
               >
-                Contáctanos
+                Ver Motores
+              </Button>
+            </Link>
+            <Link href="/departamentos">
+              <Button
+                size="lg"
+                rightIcon={<Building2 className="h-5 w-5" />}
+                variant="outline"
+                className="bg-transparent border-white text-white hover:bg-white hover:text-gray-900"
+              >
+                Ver Departamentos
               </Button>
             </Link>
           </div>
