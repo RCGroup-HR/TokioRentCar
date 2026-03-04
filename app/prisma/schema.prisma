@@ -391,9 +391,9 @@ model Rental {
   idNumber        String?
   idType          String?
 
-  // Fotos de documentos del cliente
-  idPhotoUrl      String?   // Foto de cédula / pasaporte
-  licensePhotoUrl String?   // Foto de licencia de conducir
+  // Fotos de documentos del cliente (base64, requieren LongText)
+  idPhotoUrl      String?   @db.LongText  // Foto de cédula / pasaporte
+  licensePhotoUrl String?   @db.LongText  // Foto de licencia de conducir
 
   // Conductor adicional
   additionalDriver Json?
