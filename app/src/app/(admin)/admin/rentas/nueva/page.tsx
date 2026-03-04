@@ -317,6 +317,9 @@ export default function NuevaRentaPage() {
       setSignUrl(data.signUrl)
       const message = `Hola, te enviamos el enlace para firmar tu contrato de alquiler #${createdRental.contractNumber}:\n\n${data.signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
 
+      // Siempre copiar el link al portapapeles como respaldo
+      try { await navigator.clipboard.writeText(data.signUrl) } catch {}
+
       // En móvil: adjuntar imagen del vehículo con Web Share API
       const vehicleImg = selectedVehicle?.images?.find(i => i.isPrimary) || selectedVehicle?.images?.[0]
       if (vehicleImg?.url && typeof navigator !== "undefined" && navigator.share) {
@@ -332,7 +335,7 @@ export default function NuevaRentaPage() {
         }
       }
 
-      // Fallback: abrir WhatsApp con texto
+      // Fallback: abrir WhatsApp con texto (siempre incluye el link)
       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
     } catch {
       alert("Error de conexión")
@@ -443,6 +446,8 @@ export default function NuevaRentaPage() {
                     <button
                       onClick={async () => {
                         const msg = `Hola, aquí está el enlace para firmar tu contrato #${createdRental.contractNumber}:\n\n${signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
+                        // Siempre copiar el link al portapapeles como respaldo
+                        try { await navigator.clipboard.writeText(signUrl) } catch {}
                         const vehicleImg = selectedVehicle?.images?.find(i => i.isPrimary) || selectedVehicle?.images?.[0]
                         if (vehicleImg?.url && typeof navigator !== "undefined" && navigator.share) {
                           try {
