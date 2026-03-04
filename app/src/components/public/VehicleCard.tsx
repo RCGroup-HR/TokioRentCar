@@ -10,6 +10,7 @@ import {
   Cog,
   Snowflake,
   Star,
+  CalendarX2,
 } from "lucide-react"
 import {
   formatCurrency,
@@ -38,6 +39,8 @@ interface Vehicle {
   images: VehicleImage[]
   isFeatured: boolean
   status: string
+  /** null = sin filtro de fechas, true/false = disponibilidad para fechas seleccionadas */
+  isAvailableForDates?: boolean | null
 }
 
 interface VehicleCardProps {
@@ -51,6 +54,13 @@ export function VehicleCard({ vehicle, basePath = "/vehiculos" }: VehicleCardPro
   const primaryImage = vehicle.images.find((img) => img.isPrimary) || vehicle.images[0]
 
   const isAvailable = vehicle.status === "AVAILABLE"
+
+  // Lógica de disponibilidad según filtro de fechas
+  const hasDateCheck = vehicle.isAvailableForDates !== null && vehicle.isAvailableForDates !== undefined
+  /** No disponible específicamente para las fechas seleccionadas */
+  const unavailableForDates = hasDateCheck && vehicle.isAvailableForDates === false
+  /** No disponible en general (sin filtro de fechas) */
+  const generallyUnavailable = !hasDateCheck && !isAvailable
 
   return (
     <Link href={`${basePath}/${vehicle.id}`}>
@@ -94,8 +104,18 @@ export function VehicleCard({ vehicle, basePath = "/vehiculos" }: VehicleCardPro
             </Badge>
           </div>
 
-          {/* Status */}
-          {!isAvailable && (
+          {/* No disponible para las fechas seleccionadas */}
+          {unavailableForDates && (
+            <div className="absolute inset-0 bg-amber-900/55 flex flex-col items-center justify-center gap-2">
+              <CalendarX2 className="h-8 w-8 text-white drop-shadow" />
+              <span className="text-white text-xs font-semibold text-center leading-snug drop-shadow px-4">
+                No disponible para<br />las fechas seleccionadas
+              </span>
+            </div>
+          )}
+
+          {/* No disponible en general (sin filtro de fechas) */}
+          {generallyUnavailable && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <Badge variant="danger" className="text-sm">
                 No Disponible
@@ -149,12 +169,16 @@ export function VehicleCard({ vehicle, basePath = "/vehiculos" }: VehicleCardPro
             <button
               className="px-4 py-2 rounded-lg font-medium transition"
               style={{
-                backgroundColor: isAvailable ? settings.primaryColor : "#9CA3AF",
+                backgroundColor: generallyUnavailable
+                  ? "#9CA3AF"
+                  : unavailableForDates
+                  ? "#6B7280"
+                  : settings.primaryColor,
                 color: "#fff",
               }}
-              disabled={!isAvailable}
+              disabled={generallyUnavailable}
             >
-              {isAvailable ? "Ver Detalles" : "No Disponible"}
+              {generallyUnavailable ? "No Disponible" : "Ver Detalles"}
             </button>
           </div>
         </div>

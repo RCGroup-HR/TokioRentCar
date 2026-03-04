@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { VehicleCard, CatalogTabs } from "@/components/public"
 import { Button, Input, Select } from "@/components/ui"
-import { Search, Filter, X, Car } from "lucide-react"
+import { Search, Filter, X, Car, CalendarCheck } from "lucide-react"
 
 interface Vehicle {
   id: string
@@ -21,6 +21,7 @@ interface Vehicle {
   images: { id: string; url: string; isPrimary: boolean }[]
   isFeatured: boolean
   status: string
+  isAvailableForDates: boolean | null
 }
 
 interface Pagination {
@@ -57,14 +58,31 @@ const sortOptions = [
   { value: "popular", label: "Más populares" },
 ]
 
+/** Formatea una fecha "YYYY-MM-DD" en español sin problemas de zona horaria */
+function formatDateDisplay(dateStr: string): string {
+  if (!dateStr) return ""
+  const parts = dateStr.split("-")
+  if (parts.length !== 3) return dateStr
+  const [year, month, day] = parts.map(Number)
+  const months = ["ene", "feb", "mar", "abr", "may", "jun",
+                  "jul", "ago", "sep", "oct", "nov", "dic"]
+  return `${day} ${months[month - 1]} ${year}`
+}
+
 function VehiclesContent() {
   const searchParams = useSearchParams()
   const { settings } = useSettingsStore()
+
+  // Fechas desde la búsqueda (SearchForm en home)
+  const dateStart = searchParams.get("start") || ""
+  const dateEnd = searchParams.get("end") || ""
+  const hasDateFilter = !!(dateStart && dateEnd)
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
+  const [showOnlyAvailable, setShowOnlyAvailable] = useState(false)
 
   // Filters
   const [search, setSearch] = useState("")
@@ -83,37 +101,57 @@ function VehiclesContent() {
       const params = new URLSearchParams()
       params.set("page", page.toString())
       params.set("limit", "12")
-      params.set("available", "true")
-
       params.set("vehicleType", "CAR")
+
       if (search) params.set("search", search)
       if (category) params.set("category", category)
+
+      // Con fechas: mostrar todos (incluyendo rentados) + isAvailableForDates
+      // Sin fechas: comportamiento clásico (excluir rentados)
+      if (dateStart && dateEnd) {
+        params.set("startDate", dateStart)
+        params.set("endDate", dateEnd)
+      } else {
+        params.set("available", "true")
+      }
 
       const response = await fetch(`/api/vehicles?${params.toString()}`)
       const data = await response.json()
 
-      let sortedVehicles = data.vehicles || []
+      let sortedVehicles: Vehicle[] = data.vehicles || []
 
-      // Client-side filtering and sorting
+      // Client-side filtering by transmission
       if (transmission) {
         sortedVehicles = sortedVehicles.filter(
-          (v: Vehicle) => v.transmission === transmission
+          (v) => v.transmission === transmission
         )
       }
 
+      // Ordenar: cuando hay fechas, poner disponibles primero
       switch (sortBy) {
         case "price_asc":
-          sortedVehicles.sort((a: Vehicle, b: Vehicle) => a.dailyRate - b.dailyRate)
+          sortedVehicles.sort((a, b) => a.dailyRate - b.dailyRate)
           break
         case "price_desc":
-          sortedVehicles.sort((a: Vehicle, b: Vehicle) => b.dailyRate - a.dailyRate)
+          sortedVehicles.sort((a, b) => b.dailyRate - a.dailyRate)
           break
         case "newest":
-          sortedVehicles.sort((a: Vehicle, b: Vehicle) => b.year - a.year)
+          sortedVehicles.sort((a, b) => b.year - a.year)
           break
         case "popular":
-          sortedVehicles.sort((a: Vehicle, b: Vehicle) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0))
+          sortedVehicles.sort(
+            (a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0)
+          )
           break
+      }
+
+      // Si hay filtro de fechas, poner disponibles arriba dentro del mismo orden
+      if (hasDateFilter) {
+        sortedVehicles.sort((a, b) => {
+          const aAvail = a.isAvailableForDates === true ? 0 : 1
+          const bAvail = b.isAvailableForDates === true ? 0 : 1
+          return aAvail - bAvail
+        })
       }
 
       setVehicles(sortedVehicles)
@@ -136,10 +174,22 @@ function VehiclesContent() {
     setCategory("")
     setTransmission("")
     setSortBy("popular")
+    setShowOnlyAvailable(false)
     setPage(1)
   }
 
   const hasActiveFilters = search || category || transmission
+
+  // Vehículos disponibles para las fechas (cuando aplica)
+  const availableCount = hasDateFilter
+    ? vehicles.filter((v) => v.isAvailableForDates !== false).length
+    : vehicles.length
+
+  // Lista a mostrar en el grid (filtrada si el toggle está activo)
+  const displayedVehicles =
+    hasDateFilter && showOnlyAvailable
+      ? vehicles.filter((v) => v.isAvailableForDates !== false)
+      : vehicles
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -289,10 +339,40 @@ function VehiclesContent() {
               </div>
             )}
 
+            {/* Banner de disponibilidad por fechas */}
+            {hasDateFilter && !loading && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <CalendarCheck className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                        {formatDateDisplay(dateStart)} — {formatDateDisplay(dateEnd)}
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">
+                        <span className="font-medium">{availableCount}</span> de{" "}
+                        <span className="font-medium">{vehicles.length}</span> vehículos disponibles para estas fechas
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowOnlyAvailable(!showOnlyAvailable)}
+                    className={`flex-shrink-0 text-sm font-medium px-4 py-2 rounded-lg transition ${
+                      showOnlyAvailable
+                        ? "bg-blue-600 text-white"
+                        : "bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                    }`}
+                  >
+                    {showOnlyAvailable ? "✓ Solo disponibles" : "Ver solo disponibles"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Results Count */}
-            {pagination && (
+            {pagination && !loading && (
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-4">
-                Mostrando {vehicles.length} de {pagination.total} vehículos
+                Mostrando {displayedVehicles.length} de {pagination.total} vehículos
               </p>
             )}
 
@@ -301,11 +381,14 @@ function VehiclesContent() {
               <div className="flex justify-center py-16">
                 <div className="loader" />
               </div>
-            ) : vehicles.length > 0 ? (
+            ) : displayedVehicles.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {vehicles.map((vehicle) => (
-                    <VehicleCard key={vehicle.id} vehicle={vehicle} />
+                  {displayedVehicles.map((vehicle) => (
+                    <VehicleCard
+                      key={vehicle.id}
+                      vehicle={vehicle}
+                    />
                   ))}
                 </div>
 
@@ -339,7 +422,9 @@ function VehiclesContent() {
                   No se encontraron vehículos
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Intenta ajustar los filtros de búsqueda
+                  {showOnlyAvailable
+                    ? "No hay vehículos disponibles para las fechas seleccionadas"
+                    : "Intenta ajustar los filtros de búsqueda"}
                 </p>
                 <Button variant="outline" onClick={clearFilters}>
                   Limpiar filtros

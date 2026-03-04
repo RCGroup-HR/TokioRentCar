@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
     const featured = searchParams.get("featured")
     const available = searchParams.get("available")
     const vehicleType = searchParams.get("vehicleType")
+    const startDate = searchParams.get("startDate")
+    const endDate = searchParams.get("endDate")
+    const hasDateFilter = !!(startDate && endDate)
 
     const where: Record<string, unknown> = {
       isActive: true,
@@ -31,8 +34,11 @@ export async function GET(request: NextRequest) {
       where.isFeatured = true
     }
 
-    if (available === "true") {
-      // Mostrar todos los vehículos EXCEPTO los rentados
+    if (hasDateFilter) {
+      // Cuando se proveen fechas: mostrar TODOS los vehículos activos (incluyendo RENTED)
+      // La disponibilidad se calculará desde los solapamientos de rentas
+    } else if (available === "true") {
+      // Sin fechas: excluir vehículos rentados (comportamiento legacy)
       where.status = { not: "RENTED" }
     }
 
@@ -50,7 +56,7 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    const [vehicles, total] = await Promise.all([
+    const [vehicles, total, overlappingRentals] = await Promise.all([
       prisma.vehicle.findMany({
         where,
         select: {
@@ -95,10 +101,32 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.vehicle.count({ where }),
+      // Si se proveen fechas, obtener IDs de vehículos con rentas que se solapan
+      hasDateFilter
+        ? prisma.rental.findMany({
+            where: {
+              // Solapamiento: rental.startDate <= endDate AND rental.expectedEndDate >= startDate
+              startDate: { lte: new Date(endDate!) },
+              expectedEndDate: { gte: new Date(startDate!) },
+              // Solo rentas activas (no completadas ni canceladas)
+              status: { notIn: ["COMPLETED", "CANCELLED"] },
+            },
+            select: { vehicleId: true },
+          })
+        : Promise.resolve([]),
     ])
 
+    // Construir set de IDs no disponibles para las fechas solicitadas
+    const unavailableIds = new Set(overlappingRentals.map((r) => r.vehicleId))
+
+    // Agregar campo isAvailableForDates a cada vehículo
+    const vehiclesWithAvailability = vehicles.map((v) => ({
+      ...v,
+      isAvailableForDates: hasDateFilter ? !unavailableIds.has(v.id) : null,
+    }))
+
     return NextResponse.json({
-      vehicles,
+      vehicles: vehiclesWithAvailability,
       pagination: {
         page,
         limit,
