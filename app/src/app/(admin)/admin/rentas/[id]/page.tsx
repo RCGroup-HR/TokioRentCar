@@ -82,6 +82,7 @@ interface Rental {
     id: string
     firstName: string
     lastName: string
+    signature?: string | null   // Firma del perfil del agente (fallback)
   }
   vehicle: Vehicle
 }
@@ -923,10 +924,11 @@ ${settings.companyName || 'Rent Car'}`
             )}
           </div>
           <div className="text-center">
-            {rental.agentSignature ? (
+            {/* Usa la firma guardada en la renta; si no existe, usa la del perfil del agente */}
+            {(rental.agentSignature || rental.agent?.signature) ? (
               <div className="mx-8">
                 <img
-                  src={rental.agentSignature}
+                  src={(rental.agentSignature || rental.agent?.signature) as string}
                   alt="Firma del agente"
                   className="h-20 mx-auto border-b border-black"
                 />
