@@ -57,14 +57,14 @@ export default function HomePage() {
 
   useEffect(() => {
     // Vehículos destacados
-    fetch("/api/vehicles?featured=true&available=true&limit=6&vehicleType=CAR")
+    fetch("/api/vehicles?featured=true&limit=6&vehicleType=CAR")
       .then((res) => res.json())
       .then((data) => setFeaturedVehicles(data.vehicles || []))
       .catch(() => {})
       .finally(() => setLoadingVehicles(false))
 
     // Solo motores destacados
-    fetch("/api/vehicles?featured=true&available=true&limit=6&vehicleType=MOTOR")
+    fetch("/api/vehicles?featured=true&limit=6&vehicleType=MOTOR")
       .then((res) => res.json())
       .then((data) => setFeaturedMotores(data.vehicles || []))
       .catch(() => {})
