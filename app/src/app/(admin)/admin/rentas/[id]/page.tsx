@@ -319,10 +319,24 @@ export default function RentalDetailPage() {
         format: 'a4',
       })
 
-      const imgWidth = 210 // A4 width in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      const pageWidth  = 210  // A4 ancho en mm
+      const pageHeight = 297  // A4 alto en mm
+      const imgWidth   = pageWidth
+      const imgHeight  = (canvas.height * imgWidth) / canvas.width
 
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
+      // Paginar: si el contenido supera una hoja se divide automáticamente
+      let heightLeft = imgHeight
+      let position   = 0
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+
+      while (heightLeft > 0) {
+        position -= pageHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
 
       return pdf.output('blob')
     } catch (error) {
@@ -943,34 +957,62 @@ ${settings.companyName || 'Rent Car'}`
           </div>
         )}
 
-        {/* Fotos de documentos del cliente — incluidas en PDF/impresión */}
+        {/* ── ANEXO: Fotos de documentos — hoja aparte ── */}
         {(rental.idPhotoUrl || rental.licensePhotoUrl) && (
-          <div className="mt-6 pt-4 border-t border-gray-300">
-            <p className="text-xs font-bold text-black uppercase tracking-wide mb-3">
-              Documentos del Cliente
-            </p>
-            <div className="grid grid-cols-2 gap-4">
+          <div style={{ pageBreakBefore: "always", breakBefore: "page" }} className="pt-8">
+            {/* Cabecera del anexo */}
+            <div className="border-b-2 border-black pb-3 mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-base font-bold text-black uppercase tracking-widest">
+                  Anexo — Documentos de Identidad
+                </p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Contrato #{rental.contractNumber} · {rental.rentalCustomers[0]?.customer
+                    ? `${rental.rentalCustomers[0].customer.firstName} ${rental.rentalCustomers[0].customer.lastName}`
+                    : "Cliente"}
+                </p>
+              </div>
+              {rental.signedAt && (
+                <p className="text-xs text-gray-500 text-right">
+                  Firmado el<br />
+                  {new Date(rental.signedAt).toLocaleString("es-DO")}
+                </p>
+              )}
+            </div>
+
+            {/* Fotos a tamaño completo, una por columna */}
+            <div className={`grid gap-6 ${rental.idPhotoUrl && rental.licensePhotoUrl ? "grid-cols-2" : "grid-cols-1 max-w-sm mx-auto"}`}>
               {rental.idPhotoUrl && (
-                <div className="text-center">
+                <div>
+                  <p className="text-xs font-bold text-black uppercase tracking-wide mb-2">
+                    Cédula / Pasaporte
+                  </p>
                   <img
                     src={rental.idPhotoUrl}
                     alt="Cédula / Pasaporte"
-                    className="w-full max-h-36 object-cover rounded border border-gray-300"
+                    className="w-full object-contain rounded border border-gray-300"
+                    style={{ maxHeight: "360px" }}
                   />
-                  <p className="text-xs text-black mt-1 font-medium">Cédula / Pasaporte</p>
                 </div>
               )}
               {rental.licensePhotoUrl && (
-                <div className="text-center">
+                <div>
+                  <p className="text-xs font-bold text-black uppercase tracking-wide mb-2">
+                    Licencia de Conducir
+                  </p>
                   <img
                     src={rental.licensePhotoUrl}
                     alt="Licencia de Conducir"
-                    className="w-full max-h-36 object-cover rounded border border-gray-300"
+                    className="w-full object-contain rounded border border-gray-300"
+                    style={{ maxHeight: "360px" }}
                   />
-                  <p className="text-xs text-black mt-1 font-medium">Licencia de Conducir</p>
                 </div>
               )}
             </div>
+
+            <p className="text-xs text-gray-400 text-center mt-8">
+              Este documento fue adjuntado por el cliente al momento de la firma del contrato.
+            </p>
           </div>
         )}
       </div>
