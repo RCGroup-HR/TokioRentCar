@@ -177,3 +177,11 @@ textarea:focus {
 .no-transition {
   transition: none !important;
 }
+
+/* ── Impresión: tamaño carta (8.5 × 11 pulgadas) ── */
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 12mm 12mm 12mm 12mm;
+  }
+}

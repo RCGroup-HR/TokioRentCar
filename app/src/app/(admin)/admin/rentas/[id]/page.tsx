@@ -316,11 +316,11 @@ export default function RentalDetailPage() {
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4',
+        format: 'letter',          // 8.5 × 11 pulgadas
       })
 
-      const pageWidth  = 210  // A4 ancho en mm
-      const pageHeight = 297  // A4 alto en mm
+      const pageWidth  = 215.9   // Letter ancho en mm
+      const pageHeight = 279.4   // Letter alto en mm
       const imgWidth   = pageWidth
       const imgHeight  = (canvas.height * imgWidth) / canvas.width
 
