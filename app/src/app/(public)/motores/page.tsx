@@ -100,13 +100,11 @@ function MotoresContent() {
       if (search) params.set("search", search)
       if (category) params.set("category", category)
 
-      // Con fechas: mostrar todos (incluyendo rentados) + isAvailableForDates
-      // Sin fechas: comportamiento clásico (excluir rentados)
+      // Siempre mostrar todos los vehículos activos (incluyendo rentados)
+      // Con fechas: calcular disponibilidad por solapamiento de rentas
       if (dateStart && dateEnd) {
         params.set("startDate", dateStart)
         params.set("endDate", dateEnd)
-      } else {
-        params.set("available", "true")
       }
 
       const response = await fetch(`/api/vehicles?${params.toString()}`)

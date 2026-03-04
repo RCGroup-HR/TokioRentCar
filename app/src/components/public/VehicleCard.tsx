@@ -11,6 +11,7 @@ import {
   Snowflake,
   Star,
   CalendarX2,
+  Calendar,
 } from "lucide-react"
 import {
   formatCurrency,
@@ -57,10 +58,13 @@ export function VehicleCard({ vehicle, basePath = "/vehiculos" }: VehicleCardPro
 
   // Lógica de disponibilidad según filtro de fechas
   const hasDateCheck = vehicle.isAvailableForDates !== null && vehicle.isAvailableForDates !== undefined
+  const isRented = vehicle.status === "RENTED"
   /** No disponible específicamente para las fechas seleccionadas */
   const unavailableForDates = hasDateCheck && vehicle.isAvailableForDates === false
-  /** No disponible en general (sin filtro de fechas) */
-  const generallyUnavailable = !hasDateCheck && !isAvailable
+  /** Rentado actualmente (sin filtro de fechas) → mostrar overlay informativo pero seguir clickeable */
+  const currentlyRented = !hasDateCheck && isRented
+  /** No disponible en general por mantenimiento u otro motivo (no RENTED) */
+  const generallyUnavailable = !hasDateCheck && !isAvailable && !isRented
 
   return (
     <Link href={`${basePath}/${vehicle.id}`}>
@@ -104,6 +108,17 @@ export function VehicleCard({ vehicle, basePath = "/vehiculos" }: VehicleCardPro
             </Badge>
           </div>
 
+          {/* Rentado actualmente — sin filtro de fechas (overlay suave, sigue clickeable) */}
+          {currentlyRented && (
+            <div className="absolute inset-0 bg-gray-900/45 flex flex-col items-center justify-center gap-2">
+              <Calendar className="h-7 w-7 text-white drop-shadow" />
+              <span className="text-white text-xs font-semibold text-center leading-snug drop-shadow px-4">
+                Actualmente rentado<br />
+                <span className="font-normal opacity-90">Selecciona fechas para<br />verificar disponibilidad</span>
+              </span>
+            </div>
+          )}
+
           {/* No disponible para las fechas seleccionadas */}
           {unavailableForDates && (
             <div className="absolute inset-0 bg-amber-900/55 flex flex-col items-center justify-center gap-2">
@@ -114,7 +129,7 @@ export function VehicleCard({ vehicle, basePath = "/vehiculos" }: VehicleCardPro
             </div>
           )}
 
-          {/* No disponible en general (sin filtro de fechas) */}
+          {/* No disponible en general — mantenimiento u otro motivo */}
           {generallyUnavailable && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <Badge variant="danger" className="text-sm">
@@ -171,7 +186,7 @@ export function VehicleCard({ vehicle, basePath = "/vehiculos" }: VehicleCardPro
               style={{
                 backgroundColor: generallyUnavailable
                   ? "#9CA3AF"
-                  : unavailableForDates
+                  : unavailableForDates || currentlyRented
                   ? "#6B7280"
                   : settings.primaryColor,
                 color: "#fff",
