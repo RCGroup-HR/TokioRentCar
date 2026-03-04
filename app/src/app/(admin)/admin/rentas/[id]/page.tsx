@@ -119,6 +119,7 @@ export default function RentalDetailPage() {
   const [generatingLink, setGeneratingLink] = useState(false)
   const [revokingLink, setRevokingLink] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [linkSharedNotice, setLinkSharedNotice] = useState(false)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [uploadingId, setUploadingId] = useState(false)
   const [uploadingLicense, setUploadingLicense] = useState(false)
@@ -229,6 +230,9 @@ export default function RentalDetailPage() {
     const name = customerData ? `${customerData.firstName}` : "cliente"
     const message = `Hola ${name}, te enviamos el enlace para firmar tu contrato de alquiler #${rental.contractNumber}:\n\n${signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
 
+    // ── Siempre copiar el link al portapapeles como respaldo ──
+    try { await navigator.clipboard.writeText(signUrl) } catch {}
+
     // En móvil: intentar adjuntar imagen del vehículo con Web Share API
     const vehicleImg = rental.vehicle.images.find(i => i.isPrimary) || rental.vehicle.images[0]
     if (vehicleImg?.url && typeof navigator !== "undefined" && navigator.share) {
@@ -237,14 +241,17 @@ export default function RentalDetailPage() {
         const imageFile = new File([blob], "vehiculo.jpg", { type: blob.type || "image/jpeg" })
         if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
           await navigator.share({ files: [imageFile], text: message })
+          // Mostrar aviso: el link también está en el portapapeles
+          setLinkSharedNotice(true)
+          setTimeout(() => setLinkSharedNotice(false), 8000)
           return
         }
       } catch {
-        // ignorar errores de fetch y caer al fallback
+        // ignorar errores y caer al fallback
       }
     }
 
-    // Fallback: abrir WhatsApp con texto solamente
+    // Fallback: abrir WhatsApp con texto (siempre incluye el link)
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
   }
 
@@ -600,6 +607,16 @@ ${settings.companyName || 'Rent Car'}`
                       {revokingLink ? "Revocando..." : "Revocar link"}
                     </button>
                   </div>
+
+                  {/* Aviso: link copiado al portapapeles tras compartir imagen */}
+                  {linkSharedNotice && (
+                    <div className="mt-3 flex items-start gap-2 p-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                      <Copy className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                        <strong>Link copiado al portapapeles.</strong> Si WhatsApp no lo incluyó junto a la imagen, pégalo en el chat.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
