@@ -99,9 +99,69 @@ export default function NuevaRentaPage() {
     notes: "",
   })
 
+  // Helper: extrae "YYYY-MM-DD" de cualquier valor de fecha de forma segura
+  const toDateStr = (val: unknown): string => {
+    if (!val) return ""
+    const s = String(val)
+    // Si viene como ISO "2026-03-09T04:00:00.000Z" → "2026-03-09"
+    return s.length >= 10 ? s.slice(0, 10) : ""
+  }
+
   useEffect(() => {
     fetchData()
   }, [])
+
+  // Pre-carga datos de la reservación cuando el formulario ya tiene vehiculos/locaciones cargados
+  const [dataReady, setDataReady] = useState(false)
+
+  useEffect(() => {
+    const reservationId = searchParams.get("reservationId")
+    if (!dataReady || !reservationId) return
+
+    const loadReservation = async () => {
+      try {
+        const res = await fetch(`/api/reservations/${reservationId}`)
+        if (!res.ok) return
+        const reservation = await res.json()
+
+        const startStr = toDateStr(reservation.startDate)
+        const endStr   = toDateStr(reservation.endDate)
+
+        // Asegurar que el vehículo esté en la lista (puede ser RESERVED, no AVAILABLE)
+        setVehicles((prev) => {
+          if (prev.some((v) => v.id === reservation.vehicleId)) return prev
+          return [reservation.vehicle, ...prev]
+        })
+
+        setSelectedVehicle(reservation.vehicle)
+
+        const firstCustomer = reservation.reservationCustomers?.[0]?.customer ?? null
+        if (firstCustomer) setSelectedCustomer(firstCustomer)
+
+        setFormData((prev) => ({
+          ...prev,
+          reservationId:   reservation.id,
+          vehicleId:       reservation.vehicleId,
+          startDate:       startStr || prev.startDate,
+          expectedEndDate: endStr,
+          dailyRate:       reservation.dailyRate    || reservation.vehicle?.dailyRate    || 0,
+          depositAmount:   reservation.depositAmount || reservation.vehicle?.depositAmount || 0,
+          startMileage:    reservation.vehicle?.mileage || 0,
+          ...(firstCustomer && {
+            customerId:    firstCustomer.id,
+            licenseNumber: firstCustomer.licenseNumber || "",
+            licenseExpiry: toDateStr(firstCustomer.licenseExpiry),
+            idNumber:      firstCustomer.idNumber || "",
+            idType:        firstCustomer.idType   || "CEDULA",
+          }),
+        }))
+      } catch (e) {
+        console.error("Error cargando reservación:", e)
+      }
+    }
+
+    loadReservation()
+  }, [dataReady])
 
   useEffect(() => {
     if (formData.vehicleId) {
@@ -110,9 +170,9 @@ export default function NuevaRentaPage() {
         setSelectedVehicle(vehicle)
         setFormData((prev) => ({
           ...prev,
-          dailyRate: vehicle.dailyRate,
-          depositAmount: vehicle.depositAmount,
-          startMileage: vehicle.mileage,
+          dailyRate:     prev.dailyRate     || vehicle.dailyRate,
+          depositAmount: prev.depositAmount || vehicle.depositAmount,
+          startMileage:  prev.startMileage  || vehicle.mileage,
         }))
       }
     }
@@ -120,8 +180,6 @@ export default function NuevaRentaPage() {
 
   const fetchData = async () => {
     try {
-      const reservationId = searchParams.get("reservationId")
-
       const [vehiclesRes, locationsRes, agentsRes] = await Promise.all([
         fetch("/api/vehicles?available=true&limit=100"),
         fetch("/api/locations"),
@@ -132,69 +190,22 @@ export default function NuevaRentaPage() {
       const locationsData = await locationsRes.json()
       const agentsData = await agentsRes.json()
 
+      setVehicles(vehiclesData.vehicles || [])
       setLocations(locationsData || [])
       setAgents(agentsData.users || [])
 
+      // Set default location
       const defaultLocation = locationsData.find((l: Location) => l.name)
-
-      // Si viene de una reservación, pre-cargar sus datos
-      if (reservationId) {
-        try {
-          const resRes = await fetch(`/api/reservations/${reservationId}`)
-          if (resRes.ok) {
-            const reservation = await resRes.json()
-
-            const startStr = reservation.startDate.split("T")[0]
-            const endStr   = reservation.endDate.split("T")[0]
-
-            // Añadir el vehículo de la reservación a la lista (puede estar RESERVED, no AVAILABLE)
-            const vehiclesList: Vehicle[] = vehiclesData.vehicles || []
-            if (!vehiclesList.some((v: Vehicle) => v.id === reservation.vehicleId)) {
-              vehiclesList.unshift(reservation.vehicle)
-            }
-            setVehicles(vehiclesList)
-            setSelectedVehicle(reservation.vehicle)
-
-            // Primer cliente de la reservación (nuevo modelo Customer)
-            const firstCustomer = reservation.reservationCustomers?.[0]?.customer ?? null
-            if (firstCustomer) {
-              setSelectedCustomer(firstCustomer)
-            }
-
-            setFormData((prev) => ({
-              ...prev,
-              vehicleId:       reservation.vehicleId,
-              startDate:       startStr,
-              expectedEndDate: endStr,
-              dailyRate:       reservation.dailyRate    || reservation.vehicle?.dailyRate    || 0,
-              depositAmount:   reservation.depositAmount || reservation.vehicle?.depositAmount || 0,
-              startMileage:    reservation.vehicle?.mileage || 0,
-              ...(firstCustomer && {
-                customerId:    firstCustomer.id,
-                licenseNumber: firstCustomer.licenseNumber || "",
-                licenseExpiry: firstCustomer.licenseExpiry
-                  ? firstCustomer.licenseExpiry.split("T")[0]
-                  : "",
-                idNumber:      firstCustomer.idNumber  || "",
-                idType:        firstCustomer.idType    || "CEDULA",
-              }),
-              ...(defaultLocation && { pickupLocation: defaultLocation.name }),
-            }))
-
-            return // No hace falta continuar con el flujo normal
-          }
-        } catch (e) {
-          console.error("Error cargando reservación:", e)
-        }
-      }
-
-      // Flujo normal (sin reservación)
-      setVehicles(vehiclesData.vehicles || [])
       if (defaultLocation) {
-        setFormData((prev) => ({ ...prev, pickupLocation: defaultLocation.name }))
+        setFormData((prev) => ({
+          ...prev,
+          pickupLocation: defaultLocation.name,
+        }))
       }
     } catch (error) {
       console.error("Error fetching data:", error)
+    } finally {
+      setDataReady(true)
     }
   }
 
