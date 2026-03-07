@@ -5,7 +5,9 @@ import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { useSettingsStore } from "@/stores/settingsStore"
-import { Button, Input, Badge, Card, CardContent } from "@/components/ui"
+import { Button, Badge, Card, CardContent } from "@/components/ui"
+import { VehicleDatePicker } from "@/components/public"
+import type { OccupiedRange } from "@/components/public"
 import {
   ArrowLeft,
   Users,
@@ -211,33 +213,39 @@ export default function VehicleDetailPage() {
 
   const isAvailable = vehicle.status === "AVAILABLE"
   const isRented = vehicle.status === "RENTED"
+  const isBlocked = !isAvailable && !isRented
 
-  /** Verifica si las fechas elegidas se solapan con alguna renta activa */
-  const hasDateConflict = (): boolean => {
-    if (!startDate || !endDate || !vehicle.rentals?.length) return false
-    const sStart = new Date(startDate)
-    const sEnd = new Date(endDate)
-    return vehicle.rentals.some((r) => {
-      const rStart = new Date(r.startDate)
-      const rEnd = new Date(r.expectedEndDate)
-      return rStart <= sEnd && rEnd >= sStart
-    })
-  }
+  /** Rangos ocupados = rentas activas + reservaciones pendientes/confirmadas */
+  const occupiedRanges: OccupiedRange[] = [
+    ...(vehicle.rentals || []).map(r => ({
+      start: r.startDate.split("T")[0],
+      end: r.expectedEndDate.split("T")[0],
+    })),
+    ...(vehicle.reservations || []).map(r => ({
+      start: r.startDate.split("T")[0],
+      end: r.endDate.split("T")[0],
+    })),
+  ]
 
-  /** Fecha más temprana en que el vehículo estará libre (día después del fin de la última renta activa) */
-  const earliestAvailableDate = (): string | null => {
+  /** Verifica si las fechas elegidas se solapan con alguna fecha ocupada */
+  const dateConflict = (() => {
+    if (!startDate || !endDate) return false
+    return occupiedRanges.some(r => r.start <= endDate && r.end >= startDate)
+  })()
+
+  /** Próxima fecha disponible estimada (día después del fin de la renta más próxima) */
+  const nextAvailable = (() => {
     if (!vehicle.rentals?.length) return null
     const sorted = [...vehicle.rentals].sort(
       (a, b) => new Date(a.expectedEndDate).getTime() - new Date(b.expectedEndDate).getTime()
     )
-    // Sumar 1 día al fin de la renta más cercana
     const d = new Date(sorted[0].expectedEndDate)
     d.setDate(d.getDate() + 1)
-    return d.toISOString().split("T")[0]
-  }
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  })()
 
   /** Formatea "YYYY-MM-DD" a texto legible en español */
-  const formatAvailableDate = (dateStr: string): string => {
+  const formatDate = (dateStr: string): string => {
     const parts = dateStr.split("-")
     if (parts.length !== 3) return dateStr
     const [year, month, day] = parts.map(Number)
@@ -245,9 +253,6 @@ export default function VehicleDetailPage() {
                     "jul", "ago", "sep", "oct", "nov", "dic"]
     return `${day} de ${months[month - 1]} de ${year}`
   }
-
-  const dateConflict = startDate && endDate ? hasDateConflict() : false
-  const nextAvailable = earliestAvailableDate()
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -453,218 +458,177 @@ export default function VehicleDetailPage() {
             </Card>
           </div>
 
-          {/* Right Column - Reservation Form */}
+          {/* Right Column - Reservation Panel */}
           <div className="lg:col-span-1">
             <Card className="sticky top-24">
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-6">Reservar Vehículo</h2>
+                <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+                  Reservar Vehículo
+                </h2>
 
-                {/* Vehículo en mantenimiento u otro estado bloqueante */}
-                {!isAvailable && !isRented ? (
+                {/* Mantenimiento u otro estado bloqueante */}
+                {isBlocked ? (
                   <div className="text-center py-8">
-                    <Badge variant="danger" className="mb-4">
-                      No Disponible
-                    </Badge>
-                    <p className="text-gray-700">
-                      Este vehículo no está disponible actualmente
+                    <Badge variant="danger" className="mb-4">No Disponible</Badge>
+                    <p className="text-gray-700 dark:text-gray-300">
+                      Este vehículo no está disponible actualmente.
                     </p>
                   </div>
-                ) : isRented && dateConflict ? (
-                  /* Rentado Y las fechas elegidas están ocupadas */
-                  <div>
-                    <div className="space-y-3 mb-4">
-                      <Input
-                        type="date"
-                        label="Fecha de recogida"
-                        value={startDate}
-                        onChange={(e) => {
-                          setStartDate(e.target.value)
-                          if (endDate && e.target.value > endDate) setEndDate(e.target.value)
-                        }}
-                        min={today}
-                        leftIcon={<Calendar className="h-4 w-4" />}
-                      />
-                      <Input
-                        type="date"
-                        label="Fecha de devolución"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        min={startDate || today}
-                        leftIcon={<Calendar className="h-4 w-4" />}
-                      />
-                    </div>
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
-                      <Badge variant="warning" className="mb-2">Fechas no disponibles</Badge>
-                      <p className="text-sm text-amber-800 font-medium">
-                        Este vehículo ya está reservado para las fechas seleccionadas.
-                      </p>
-                      {nextAvailable && (
-                        <p className="text-sm text-amber-700 mt-1">
-                          Próxima disponibilidad:{" "}
-                          <span className="font-semibold">{formatAvailableDate(nextAvailable)}</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ) : isRented && !startDate ? (
-                  /* Rentado, aún no eligió fechas */
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Calendar className="h-5 w-5 text-amber-500" />
-                      <p className="text-sm font-medium text-gray-700">
-                        Selecciona tus fechas para verificar disponibilidad
-                      </p>
-                    </div>
-                    {nextAvailable && (
-                      <p className="text-xs text-gray-500 mb-4">
-                        Próxima disponibilidad estimada:{" "}
-                        <span className="font-semibold text-gray-700">{formatAvailableDate(nextAvailable)}</span>
-                      </p>
-                    )}
-                    <div className="space-y-3">
-                      <Input
-                        type="date"
-                        label="Fecha de recogida"
-                        value={startDate}
-                        onChange={(e) => {
-                          setStartDate(e.target.value)
-                          if (endDate && e.target.value > endDate) setEndDate(e.target.value)
-                        }}
-                        min={today}
-                        leftIcon={<Calendar className="h-4 w-4" />}
-                      />
-                      <Input
-                        type="date"
-                        label="Fecha de devolución"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        min={startDate || today}
-                        leftIcon={<Calendar className="h-4 w-4" />}
-                      />
-                    </div>
-                  </div>
                 ) : (
-                  /* AVAILABLE, o RENTED con fechas libres → mostrar formulario completo */
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <Input
-                      type="date"
-                      label="Fecha de recogida"
-                      value={startDate}
-                      onChange={(e) => {
-                        setStartDate(e.target.value)
-                        if (endDate && e.target.value > endDate) {
-                          setEndDate(e.target.value)
-                        }
-                      }}
-                      min={today}
-                      required
-                      leftIcon={<Calendar className="h-4 w-4" />}
-                    />
-
-                    <Input
-                      type="date"
-                      label="Fecha de devolución"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      min={startDate || today}
-                      required
-                      leftIcon={<Calendar className="h-4 w-4" />}
-                    />
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                        Lugar de recogida
-                      </label>
-                      <select
-                        value={pickupLocation}
-                        onChange={(e) => setPickupLocation(e.target.value)}
-                        className="w-full h-10 px-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
-                        required
-                      >
-                        <option value="">Seleccionar ubicación</option>
-                        {locations.map((location) => (
-                          <option key={location.id} value={location.name}>
-                            {location.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <hr className="my-4" />
-
-                    <Input
-                      label="Nombre completo"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      required
-                    />
-
-                    <Input
-                      type="email"
-                      label="Correo electrónico"
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      required
-                    />
-
-                    <Input
-                      type="tel"
-                      label="Teléfono"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      required
-                    />
-
-                    {/* Price Summary */}
-                    {calculation && (
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>
-                            {formatCurrency(vehicle.dailyRate, settings.currency, settings.currencySymbol)} x{" "}
-                            {calculation.days} días
-                          </span>
-                          <span>
-                            {formatCurrency(calculation.subtotal, settings.currency, settings.currencySymbol)}
-                          </span>
-                        </div>
-                        {settings.applyTax && (
-                          <div className="flex justify-between text-sm">
-                            <span>ITBIS ({settings.taxRate}%)</span>
-                            <span>
-                              {formatCurrency(calculation.taxes, settings.currency, settings.currencySymbol)}
-                            </span>
-                          </div>
-                        )}
-                        <hr />
-                        <div className="flex justify-between font-bold">
-                          <span>Total</span>
-                          <span style={{ color: settings.primaryColor }}>
-                            {formatCurrency(calculation.total, settings.currency, settings.currencySymbol)}
-                          </span>
-                        </div>
-                        {vehicle.depositAmount > 0 && (
-                          <p className="text-xs text-gray-700">
-                            + Depósito de{" "}
-                            {formatCurrency(vehicle.depositAmount, settings.currency, settings.currencySymbol)}{" "}
-                            (reembolsable)
+                  <>
+                    {/* Info cuando está rentado y aún no hay fechas */}
+                    {isRented && !startDate && (
+                      <div className="flex items-start gap-2 mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                        <Calendar className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
+                            Actualmente rentado
                           </p>
-                        )}
+                          {nextAvailable && (
+                            <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                              Próxima disponibilidad estimada:{" "}
+                              <span className="font-semibold">{formatDate(nextAvailable)}</span>
+                            </p>
+                          )}
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                            Los días en <span className="font-semibold text-red-500">rojo</span> están ocupados.
+                            Elige fechas libres para hacer tu reserva.
+                          </p>
+                        </div>
                       </div>
                     )}
 
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      size="lg"
-                      isLoading={submitting}
-                    >
-                      Reservar Ahora
-                    </Button>
+                    {/* Calendario con días ocupados en rojo */}
+                    <VehicleDatePicker
+                      startDate={startDate}
+                      endDate={endDate}
+                      onStartDateChange={setStartDate}
+                      onEndDateChange={setEndDate}
+                      occupiedRanges={occupiedRanges}
+                    />
 
-                    <p className="text-xs text-gray-700 text-center">
-                      Al reservar, aceptas nuestros términos y condiciones
-                    </p>
-                  </form>
+                    {/* Mensaje de conflicto de fechas */}
+                    {startDate && endDate && dateConflict && (
+                      <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-center">
+                        <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                          Esas fechas están ocupadas
+                        </p>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                          Selecciona otras fechas (los días en rojo no están disponibles).
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Formulario de reserva — solo cuando fechas válidas y sin conflicto */}
+                    {startDate && endDate && !dateConflict && (
+                      <form onSubmit={handleSubmit} className="space-y-3 mt-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
+                            Lugar de recogida
+                          </label>
+                          <select
+                            value={pickupLocation}
+                            onChange={(e) => setPickupLocation(e.target.value)}
+                            className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                            required
+                          >
+                            <option value="">Seleccionar ubicación</option>
+                            {locations.map((location) => (
+                              <option key={location.id} value={location.name}>
+                                {location.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <hr className="border-gray-100 dark:border-gray-700" />
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
+                            Nombre completo
+                          </label>
+                          <input
+                            type="text"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
+                            Correo electrónico
+                          </label>
+                          <input
+                            type="email"
+                            value={customerEmail}
+                            onChange={(e) => setCustomerEmail(e.target.value)}
+                            className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
+                            Teléfono
+                          </label>
+                          <input
+                            type="tel"
+                            value={customerPhone}
+                            onChange={(e) => setCustomerPhone(e.target.value)}
+                            className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                            required
+                          />
+                        </div>
+
+                        {/* Resumen de precio */}
+                        {calculation && (
+                          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 space-y-1.5">
+                            <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
+                              <span>
+                                {formatCurrency(vehicle.dailyRate, settings.currency, settings.currencySymbol)}{" "}
+                                × {calculation.days} días
+                              </span>
+                              <span>
+                                {formatCurrency(calculation.subtotal, settings.currency, settings.currencySymbol)}
+                              </span>
+                            </div>
+                            {settings.applyTax && (
+                              <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
+                                <span>ITBIS ({settings.taxRate}%)</span>
+                                <span>
+                                  {formatCurrency(calculation.taxes, settings.currency, settings.currencySymbol)}
+                                </span>
+                              </div>
+                            )}
+                            <hr className="border-gray-200 dark:border-gray-600" />
+                            <div className="flex justify-between font-bold text-gray-900 dark:text-white">
+                              <span>Total</span>
+                              <span style={{ color: settings.primaryColor }}>
+                                {formatCurrency(calculation.total, settings.currency, settings.currencySymbol)}
+                              </span>
+                            </div>
+                            {vehicle.depositAmount > 0 && (
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                + Depósito{" "}
+                                {formatCurrency(vehicle.depositAmount, settings.currency, settings.currencySymbol)}{" "}
+                                (reembolsable)
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <Button type="submit" className="w-full" size="lg" isLoading={submitting}>
+                          Reservar Ahora
+                        </Button>
+
+                        <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
+                          Al reservar, aceptas nuestros términos y condiciones
+                        </p>
+                      </form>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
