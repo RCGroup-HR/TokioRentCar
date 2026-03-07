@@ -27,6 +27,19 @@ export async function GET(
             status: true,
           },
         },
+        // Rentas activas — para mostrar fechas ocupadas en el detalle público
+        rentals: {
+          where: {
+            status: { notIn: ["COMPLETED", "CANCELLED"] },
+            expectedEndDate: { gte: new Date() },
+          },
+          select: {
+            id: true,
+            startDate: true,
+            expectedEndDate: true,
+            status: true,
+          },
+        },
       },
     })
 

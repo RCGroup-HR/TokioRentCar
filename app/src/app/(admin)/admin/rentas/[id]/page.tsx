@@ -224,35 +224,18 @@ export default function RentalDetailPage() {
     })
   }
 
-  const handleShareLinkWhatsApp = async () => {
+  const handleShareLinkWhatsApp = () => {
     if (!signUrl || !rental) return
     const customerData = rental.rentalCustomers[0]?.customer
     const name = customerData ? `${customerData.firstName}` : "cliente"
     const message = `Hola ${name}, te enviamos el enlace para firmar tu contrato de alquiler #${rental.contractNumber}:\n\n${signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
 
-    // ── Siempre copiar el link al portapapeles como respaldo ──
-    try { await navigator.clipboard.writeText(signUrl) } catch {}
-
-    // En móvil: intentar adjuntar imagen del vehículo con Web Share API
-    const vehicleImg = rental.vehicle.images.find(i => i.isPrimary) || rental.vehicle.images[0]
-    if (vehicleImg?.url && typeof navigator !== "undefined" && navigator.share) {
-      try {
-        const blob = await fetch(vehicleImg.url).then(r => r.blob())
-        const imageFile = new File([blob], "vehiculo.jpg", { type: blob.type || "image/jpeg" })
-        if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
-          await navigator.share({ files: [imageFile], text: message })
-          // Mostrar aviso: el link también está en el portapapeles
-          setLinkSharedNotice(true)
-          setTimeout(() => setLinkSharedNotice(false), 8000)
-          return
-        }
-      } catch {
-        // ignorar errores y caer al fallback
-      }
-    }
-
-    // Fallback: abrir WhatsApp con texto (siempre incluye el link)
+    // Abrir WhatsApp de forma sincrónica (evita que el popup blocker lo bloquee)
+    // El link siempre va incluido en el texto del mensaje
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
+
+    // Copiar al portapapeles como respaldo adicional
+    navigator.clipboard.writeText(signUrl).catch(() => {})
   }
 
   const handleDocumentUpload = async (

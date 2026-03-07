@@ -317,26 +317,11 @@ export default function NuevaRentaPage() {
       setSignUrl(data.signUrl)
       const message = `Hola, te enviamos el enlace para firmar tu contrato de alquiler #${createdRental.contractNumber}:\n\n${data.signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
 
-      // Siempre copiar el link al portapapeles como respaldo
-      try { await navigator.clipboard.writeText(data.signUrl) } catch {}
-
-      // En móvil: adjuntar imagen del vehículo con Web Share API
-      const vehicleImg = selectedVehicle?.images?.find(i => i.isPrimary) || selectedVehicle?.images?.[0]
-      if (vehicleImg?.url && typeof navigator !== "undefined" && navigator.share) {
-        try {
-          const blob = await fetch(vehicleImg.url).then(r => r.blob())
-          const imageFile = new File([blob], "vehiculo.jpg", { type: blob.type || "image/jpeg" })
-          if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
-            await navigator.share({ files: [imageFile], text: message })
-            return
-          }
-        } catch {
-          // ignorar y caer al fallback
-        }
-      }
-
-      // Fallback: abrir WhatsApp con texto (siempre incluye el link)
+      // Abrir WhatsApp inmediatamente después del await del API (el link va en el texto)
       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank")
+
+      // Copiar al portapapeles como respaldo (no-blocking)
+      navigator.clipboard.writeText(data.signUrl).catch(() => {})
     } catch {
       alert("Error de conexión")
     } finally {
@@ -444,22 +429,12 @@ export default function NuevaRentaPage() {
                       Copiar link
                     </button>
                     <button
-                      onClick={async () => {
+                      onClick={() => {
                         const msg = `Hola, aquí está el enlace para firmar tu contrato #${createdRental.contractNumber}:\n\n${signUrl}\n\nPor favor firma a la brevedad posible.\n\n_${settings.companyName || "Rent Car"}_`
-                        // Siempre copiar el link al portapapeles como respaldo
-                        try { await navigator.clipboard.writeText(signUrl) } catch {}
-                        const vehicleImg = selectedVehicle?.images?.find(i => i.isPrimary) || selectedVehicle?.images?.[0]
-                        if (vehicleImg?.url && typeof navigator !== "undefined" && navigator.share) {
-                          try {
-                            const blob = await fetch(vehicleImg.url).then(r => r.blob())
-                            const imageFile = new File([blob], "vehiculo.jpg", { type: blob.type || "image/jpeg" })
-                            if (navigator.canShare?.({ files: [imageFile] })) {
-                              await navigator.share({ files: [imageFile], text: msg })
-                              return
-                            }
-                          } catch {}
-                        }
+                        // Abrir WhatsApp de forma sincrónica (el link va en el texto)
                         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
+                        // Copiar al portapapeles como respaldo
+                        navigator.clipboard.writeText(signUrl).catch(() => {})
                       }}
                       className="flex items-center gap-1 text-xs px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition"
                     >

@@ -60,6 +60,12 @@ interface Vehicle {
     endDate: string
     status: string
   }[]
+  rentals?: {
+    id: string
+    startDate: string
+    expectedEndDate: string
+    status: string
+  }[]
 }
 
 interface Location {
@@ -204,6 +210,44 @@ export default function VehicleDetailPage() {
   }
 
   const isAvailable = vehicle.status === "AVAILABLE"
+  const isRented = vehicle.status === "RENTED"
+
+  /** Verifica si las fechas elegidas se solapan con alguna renta activa */
+  const hasDateConflict = (): boolean => {
+    if (!startDate || !endDate || !vehicle.rentals?.length) return false
+    const sStart = new Date(startDate)
+    const sEnd = new Date(endDate)
+    return vehicle.rentals.some((r) => {
+      const rStart = new Date(r.startDate)
+      const rEnd = new Date(r.expectedEndDate)
+      return rStart <= sEnd && rEnd >= sStart
+    })
+  }
+
+  /** Fecha más temprana en que el vehículo estará libre (día después del fin de la última renta activa) */
+  const earliestAvailableDate = (): string | null => {
+    if (!vehicle.rentals?.length) return null
+    const sorted = [...vehicle.rentals].sort(
+      (a, b) => new Date(a.expectedEndDate).getTime() - new Date(b.expectedEndDate).getTime()
+    )
+    // Sumar 1 día al fin de la renta más cercana
+    const d = new Date(sorted[0].expectedEndDate)
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split("T")[0]
+  }
+
+  /** Formatea "YYYY-MM-DD" a texto legible en español */
+  const formatAvailableDate = (dateStr: string): string => {
+    const parts = dateStr.split("-")
+    if (parts.length !== 3) return dateStr
+    const [year, month, day] = parts.map(Number)
+    const months = ["ene", "feb", "mar", "abr", "may", "jun",
+                    "jul", "ago", "sep", "oct", "nov", "dic"]
+    return `${day} de ${months[month - 1]} de ${year}`
+  }
+
+  const dateConflict = startDate && endDate ? hasDateConflict() : false
+  const nextAvailable = earliestAvailableDate()
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -211,7 +255,7 @@ export default function VehicleDetailPage() {
         {/* Back button */}
         <Link
           href="/vehiculos"
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+          className="inline-flex items-center gap-2 text-gray-800 hover:text-gray-900 mb-6 font-medium"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a vehículos
@@ -310,44 +354,44 @@ export default function VehicleDetailPage() {
                     <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
                       {vehicle.brand} {vehicle.model}
                     </h1>
-                    <p className="text-gray-500">{vehicle.year}</p>
+                    <p className="text-gray-700">{vehicle.year}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">Desde</p>
+                    <p className="text-sm text-gray-700">Desde</p>
                     <p
                       className="text-3xl font-bold"
                       style={{ color: settings.primaryColor }}
                     >
                       {formatCurrency(vehicle.dailyRate, settings.currency, settings.currencySymbol)}
                     </p>
-                    <p className="text-sm text-gray-500">/ día</p>
+                    <p className="text-sm text-gray-700">/ día</p>
                   </div>
                 </div>
 
                 {/* Specs */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-y border-gray-200">
                   <div className="text-center">
-                    <Users className="h-6 w-6 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-500">Pasajeros</p>
+                    <Users className="h-6 w-6 mx-auto mb-2 text-gray-600" />
+                    <p className="text-sm text-gray-700">Pasajeros</p>
                     <p className="font-semibold">{vehicle.seats}</p>
                   </div>
                   <div className="text-center">
-                    <Cog className="h-6 w-6 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-500">Transmisión</p>
+                    <Cog className="h-6 w-6 mx-auto mb-2 text-gray-600" />
+                    <p className="text-sm text-gray-700">Transmisión</p>
                     <p className="font-semibold">
                       {getTransmissionLabel(vehicle.transmission)}
                     </p>
                   </div>
                   <div className="text-center">
-                    <Fuel className="h-6 w-6 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-500">Combustible</p>
+                    <Fuel className="h-6 w-6 mx-auto mb-2 text-gray-600" />
+                    <p className="text-sm text-gray-700">Combustible</p>
                     <p className="font-semibold">
                       {getFuelTypeLabel(vehicle.fuelType)}
                     </p>
                   </div>
                   <div className="text-center">
-                    <Snowflake className="h-6 w-6 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-500">Aire Acond.</p>
+                    <Snowflake className="h-6 w-6 mx-auto mb-2 text-gray-600" />
+                    <p className="text-sm text-gray-700">Aire Acond.</p>
                     <p className="font-semibold">
                       {vehicle.airConditioning ? "Sí" : "No"}
                     </p>
@@ -358,7 +402,7 @@ export default function VehicleDetailPage() {
                 {vehicle.description && (
                   <div className="mt-6">
                     <h2 className="text-lg font-semibold mb-2">Descripción</h2>
-                    <p className="text-gray-600">{vehicle.description}</p>
+                    <p className="text-gray-800">{vehicle.description}</p>
                   </div>
                 )}
 
@@ -373,7 +417,7 @@ export default function VehicleDetailPage() {
                             className="h-4 w-4"
                             style={{ color: settings.primaryColor }}
                           />
-                          <span className="text-gray-600">{feature}</span>
+                          <span className="text-gray-800">{feature}</span>
                         </div>
                       ))}
                     </div>
@@ -383,14 +427,14 @@ export default function VehicleDetailPage() {
                 {/* Prices */}
                 <div className="mt-6 grid grid-cols-3 gap-4">
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500">Por día</p>
+                    <p className="text-sm text-gray-700">Por día</p>
                     <p className="text-lg font-bold">
                       {formatCurrency(vehicle.dailyRate, settings.currency, settings.currencySymbol)}
                     </p>
                   </div>
                   {vehicle.weeklyRate && (
                     <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-500">Por semana</p>
+                      <p className="text-sm text-gray-700">Por semana</p>
                       <p className="text-lg font-bold">
                         {formatCurrency(vehicle.weeklyRate, settings.currency, settings.currencySymbol)}
                       </p>
@@ -398,7 +442,7 @@ export default function VehicleDetailPage() {
                   )}
                   {vehicle.monthlyRate && (
                     <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-500">Por mes</p>
+                      <p className="text-sm text-gray-700">Por mes</p>
                       <p className="text-lg font-bold">
                         {formatCurrency(vehicle.monthlyRate, settings.currency, settings.currencySymbol)}
                       </p>
@@ -415,16 +459,92 @@ export default function VehicleDetailPage() {
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-6">Reservar Vehículo</h2>
 
-                {!isAvailable ? (
+                {/* Vehículo en mantenimiento u otro estado bloqueante */}
+                {!isAvailable && !isRented ? (
                   <div className="text-center py-8">
                     <Badge variant="danger" className="mb-4">
                       No Disponible
                     </Badge>
-                    <p className="text-gray-500">
+                    <p className="text-gray-700">
                       Este vehículo no está disponible actualmente
                     </p>
                   </div>
+                ) : isRented && dateConflict ? (
+                  /* Rentado Y las fechas elegidas están ocupadas */
+                  <div>
+                    <div className="space-y-3 mb-4">
+                      <Input
+                        type="date"
+                        label="Fecha de recogida"
+                        value={startDate}
+                        onChange={(e) => {
+                          setStartDate(e.target.value)
+                          if (endDate && e.target.value > endDate) setEndDate(e.target.value)
+                        }}
+                        min={today}
+                        leftIcon={<Calendar className="h-4 w-4" />}
+                      />
+                      <Input
+                        type="date"
+                        label="Fecha de devolución"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        min={startDate || today}
+                        leftIcon={<Calendar className="h-4 w-4" />}
+                      />
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                      <Badge variant="warning" className="mb-2">Fechas no disponibles</Badge>
+                      <p className="text-sm text-amber-800 font-medium">
+                        Este vehículo ya está reservado para las fechas seleccionadas.
+                      </p>
+                      {nextAvailable && (
+                        <p className="text-sm text-amber-700 mt-1">
+                          Próxima disponibilidad:{" "}
+                          <span className="font-semibold">{formatAvailableDate(nextAvailable)}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : isRented && !startDate ? (
+                  /* Rentado, aún no eligió fechas */
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Calendar className="h-5 w-5 text-amber-500" />
+                      <p className="text-sm font-medium text-gray-700">
+                        Selecciona tus fechas para verificar disponibilidad
+                      </p>
+                    </div>
+                    {nextAvailable && (
+                      <p className="text-xs text-gray-500 mb-4">
+                        Próxima disponibilidad estimada:{" "}
+                        <span className="font-semibold text-gray-700">{formatAvailableDate(nextAvailable)}</span>
+                      </p>
+                    )}
+                    <div className="space-y-3">
+                      <Input
+                        type="date"
+                        label="Fecha de recogida"
+                        value={startDate}
+                        onChange={(e) => {
+                          setStartDate(e.target.value)
+                          if (endDate && e.target.value > endDate) setEndDate(e.target.value)
+                        }}
+                        min={today}
+                        leftIcon={<Calendar className="h-4 w-4" />}
+                      />
+                      <Input
+                        type="date"
+                        label="Fecha de devolución"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        min={startDate || today}
+                        leftIcon={<Calendar className="h-4 w-4" />}
+                      />
+                    </div>
+                  </div>
                 ) : (
+                  /* AVAILABLE, o RENTED con fechas libres → mostrar formulario completo */
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <Input
                       type="date"
@@ -452,7 +572,7 @@ export default function VehicleDetailPage() {
                     />
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
                         Lugar de recogida
                       </label>
                       <select
@@ -523,7 +643,7 @@ export default function VehicleDetailPage() {
                           </span>
                         </div>
                         {vehicle.depositAmount > 0 && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-700">
                             + Depósito de{" "}
                             {formatCurrency(vehicle.depositAmount, settings.currency, settings.currencySymbol)}{" "}
                             (reembolsable)
@@ -541,7 +661,7 @@ export default function VehicleDetailPage() {
                       Reservar Ahora
                     </Button>
 
-                    <p className="text-xs text-gray-500 text-center">
+                    <p className="text-xs text-gray-700 text-center">
                       Al reservar, aceptas nuestros términos y condiciones
                     </p>
                   </form>
