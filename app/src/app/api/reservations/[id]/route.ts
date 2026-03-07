@@ -27,6 +27,25 @@ export async function GET(
           },
         },
         rental: true,
+        reservationCustomers: {
+          include: {
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                idType: true,
+                idNumber: true,
+                licenseNumber: true,
+                licenseExpiry: true,
+                address: true,
+                city: true,
+              },
+            },
+          },
+        },
       },
     })
 
