@@ -77,6 +77,7 @@ export default function NuevaRentaPage() {
   const [vehicleSearch, setVehicleSearch] = useState("")
   const [vehicleResults, setVehicleResults] = useState<Vehicle[]>([])
   const [showVehicleSearch, setShowVehicleSearch] = useState(false)
+  const [dataReady, setDataReady] = useState(false)
 
   const [formData, setFormData] = useState({
     customerId: "",
@@ -112,8 +113,6 @@ export default function NuevaRentaPage() {
   }, [])
 
   // Pre-carga datos de la reservación cuando el formulario ya tiene vehiculos/locaciones cargados
-  const [dataReady, setDataReady] = useState(false)
-
   useEffect(() => {
     const reservationId = searchParams.get("reservationId")
     if (!dataReady || !reservationId) return
