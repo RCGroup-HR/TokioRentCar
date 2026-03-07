@@ -9,6 +9,10 @@ export async function GET(
   try {
     const { id } = await params
 
+    // Usar inicio del día (medianoche local) para no excluir rentas que terminan HOY
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+
     const vehicle = await prisma.vehicle.findUnique({
       where: { id },
       include: {
@@ -18,7 +22,7 @@ export async function GET(
         reservations: {
           where: {
             status: { in: ["PENDING", "CONFIRMED"] },
-            endDate: { gte: new Date() },
+            endDate: { gte: todayStart },
           },
           select: {
             id: true,
@@ -31,7 +35,7 @@ export async function GET(
         rentals: {
           where: {
             status: { notIn: ["COMPLETED", "CANCELLED"] },
-            expectedEndDate: { gte: new Date() },
+            expectedEndDate: { gte: todayStart },
           },
           select: {
             id: true,
